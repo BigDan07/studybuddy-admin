@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StudyBuddy - AI Study Assistant</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        :root {
+            --bg: #0a0e1a;
+            --bg-card: #111827;
+            --bg-hover: #1a2234;
+            --border: #2d3a4f;
+            --text: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --accent: #3b82f6;
+            --accent-hover: #2563eb;
+            --success: #10b981;
+            --danger: #ef4444;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+        }
+
+        /* Hero Section */
+        .hero {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 40px 20px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(59, 130, 246, 0.08) 0%, transparent 70%);
+            animation: rotate 30s linear infinite;
+        }
+
+        @keyframes rotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .hero-content {
+            position: relative;
+            z-index: 1;
+            max-width: 800px;
+        }
+
+        .hero-icon {
+            font-size: 80px;
+            color: var(--accent);
+            margin-bottom: 24px;
+            animation: float 3s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-20px); }
+        }
+
+        .hero h1 {
+            font-size: 56px;
+            font-weight: 800;
+            margin-bottom: 16px;
+            background: linear-gradient(135deg, var(--accent), #8b5cf6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .hero p {
+            font-size: 20px;
+            color: var(--text-secondary);
+            margin-bottom: 40px;
+            line-height: 1.6;
+        }
+
+        /* Server Status */
+        .server-check {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 32px;
+            margin-bottom: 32px;
+            max-width: 500px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .server-check .status-indicator {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .status-indicator .dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: var(--danger);
+            animation: pulse 2s infinite;
+        }
+
+        .status-indicator.connected .dot {
+            background: var(--success);
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .status-indicator span {
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        /* Buttons */
+        .btn {
+            padding: 14px 32px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 16px;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            text-decoration: none;
+            font-family: inherit;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent), var(--accent-hover));
+            color: white;
+            box-shadow: 0 4px 20px rgba(59, 130, 246, 0.3);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 30px rgba(59, 130, 246, 0.4);
+        }
+
+        .btn-secondary {
+            background: var(--bg-hover);
+            color: var(--text);
+            border: 1px solid var(--border);
+        }
+
+        .btn-secondary:hover {
+            border-color: var(--accent);
+        }
+
+        .btn-lg {
+            padding: 16px 40px;
+            font-size: 18px;
+        }
+
+        /* Features */
+        .features {
+            padding: 80px 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .features h2 {
+            text-align: center;
+            font-size: 36px;
+            font-weight: 700;
+            margin-bottom: 48px;
+        }
+
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 24px;
+        }
+
+        .feature-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 32px;
+            transition: all 0.2s;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-4px);
+            border-color: var(--accent);
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        .feature-card i {
+            font-size: 40px;
+            color: var(--accent);
+            margin-bottom: 16px;
+        }
+
+        .feature-card h3 {
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .feature-card p {
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+
+        /* Footer */
+        .footer {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--text-secondary);
+            font-size: 14px;
+            border-top: 1px solid var(--border);
+        }
+
+        /* Download Section */
+        .download-section {
+            background: var(--bg-card);
+            border-radius: 16px;
+            padding: 40px;
+            margin: 40px auto;
+            max-width: 600px;
+            border: 1px solid var(--border);
+        }
+
+        .download-section h3 {
+            font-size: 24px;
+            margin-bottom: 16px;
+        }
+
+        .download-section p {
+            color: var(--text-secondary);
+            margin-bottom: 24px;
+        }
+
+        .download-buttons {
+            display: flex;
+            gap: 16px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        /* Hidden app iframe */
+        #appFrame {
+            display: none;
+            width: 100%;
+            height: 100vh;
+            border: none;
+        }
+
+        body.app-mode .hero,
+        body.app-mode .features,
+        body.app-mode .footer {
+            display: none;
+        }
+
+        body.app-mode #appFrame {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <!-- Landing Page -->
+    <div class="hero">
+        <div class="hero-content">
+            <div class="hero-icon">
+                <i class="fas fa-graduation-cap"></i>
+            </div>
+            <h1>StudyBuddy</h1>
+            <p>AI-powered study assistant. Upload your handouts, generate Q&A, track goals.<br>Works offline. Your data stays on your computer.</p>
+
+            <div class="server-check" id="serverCheck">
+                <div class="status-indicator" id="statusIndicator">
+                    <div class="dot"></div>
+                    <span id="statusText">Checking local server...</span>
+                </div>
+                <div id="serverActions">
+                    <p style="color: var(--text-secondary); margin-bottom: 20px;">
+                        <i class="fas fa-info-circle"></i> 
+                        StudyBuddy requires a local server for unlimited storage and AI processing.
+                    </p>
+                    <div class="download-buttons">
+                        <a href="https://github.com/BigDan07/studybuddy-admin/releases/download/v1.0.0/StudyBuddy-Server.exe" 
+                           class="btn btn-primary btn-lg" id="downloadBtn">
+                            <i class="fas fa-download"></i> Download for Windows
+                        </a>
+                    </div>
+                    <p style="margin-top: 16px; font-size: 13px; color: var(--text-secondary);">
+                        <i class="fas fa-shield-alt"></i> 
+                        15MB download. No installation needed. Runs in background.
+                    </p>
+                </div>
+                <div id="launchApp" style="display: none;">
+                    <button class="btn btn-primary btn-lg" onclick="launchApp()">
+                        <i class="fas fa-rocket"></i> Launch StudyBuddy
+                    </button>
+                    <p style="margin-top: 16px; color: var(--text-secondary);">
+                        <i class="fas fa-check-circle" style="color: var(--success);"></i> 
+                        Local server detected and running
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Features -->
+    <div class="features">
+        <h2>Everything You Need to Study Smarter</h2>
+        <div class="feature-grid">
+            <div class="feature-card">
+                <i class="fas fa-file-upload"></i>
+                <h3>Upload Any Material</h3>
+                <p>PDF, Word, Excel, CSV, TXT. Drag and drop or click to upload. All files stored locally on your computer.</p>
+            </div>
+            <div class="feature-card">
+                <i class="fas fa-brain"></i>
+                <h3>AI Q&A Generation</h3>
+                <p>Automatically generates questions and answers from your study material using local AI. No internet needed.</p>
+            </div>
+            <div class="feature-card">
+                <i class="fas fa-bullseye"></i>
+                <h3>AOC Mode</h3>
+                <p>Area of Concentration mode hides key sections for active recall practice. Click to reveal and test your memory.</p>
+            </div>
+            <div class="feature-card">
+                <i class="fas fa-flag-checkered"></i>
+                <h3>Goal Tracking</h3>
+                <p>Set daily or weekly study goals. Get reminded to stay on track. Build streaks and stay motivated.</p>
+            </div>
+            <div class="feature-card">
+                <i class="fas fa-fire"></i>
+                <h3>Study Streaks</h3>
+                <p>Track consecutive study days. Earn achievements. Stay consistent with your learning habits.</p>
+            </div>
+            <div class="feature-card">
+                <i class="fas fa-quote-left"></i>
+                <h3>Daily Motivation</h3>
+                <p>Fresh motivational quotes tailored to your progress. Encouragement when you need it most.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+        <p><i class="fas fa-graduation-cap"></i> StudyBuddy v1.0.0 &bull; Built for students &bull; Privacy-first</p>
+    </div>
+
+    <!-- App Frame (hidden until launched) -->
+    <iframe id="appFrame" src="http://localhost:8080"></iframe>
+
+    <script>
+        // Check if local server is running
+        async function checkServer() {
+            try {
+                const response = await fetch('http://localhost:8080/health', {
+                    method: 'GET',
+                    timeout: 3000
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    document.getElementById('statusIndicator').classList.add('connected');
+                    document.getElementById('statusText').textContent = 'Local server connected!';
+                    document.getElementById('serverActions').style.display = 'none';
+                    document.getElementById('launchApp').style.display = 'block';
+                }
+            } catch (error) {
+                document.getElementById('statusText').textContent = 'Local server not running';
+            }
+        }
+
+        function launchApp() {
+            document.body.classList.add('app-mode');
+        }
+
+        // Check on load and every 5 seconds
+        checkServer();
+        setInterval(checkServer, 5000);
+    </script>
+</body>
+</html>
