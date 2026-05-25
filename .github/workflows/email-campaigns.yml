@@ -1,0 +1,49 @@
+name: StudyBuddy Email Campaigns
+
+on:
+  schedule:
+    # Run every hour to check for pending campaigns
+    - cron: '0 * * * *'
+  workflow_dispatch:
+    inputs:
+      campaign_type:
+        description: 'Campaign type'
+        required: true
+        default: 'broadcast'
+        type: choice
+        options:
+          - broadcast
+          - reminders
+
+jobs:
+  send-emails:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: |
+          pip install requests
+
+      - name: Run email sender
+        env:
+          WORKER_URL: ${{ secrets.WORKER_URL }}
+          ADMIN_KEY: ${{ secrets.ADMIN_KEY }}
+          SENDGRID_API_KEY: ${{ secrets.SENDGRID_API_KEY }}
+          SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASS: ${{ secrets.SMTP_PASS }}
+          FROM_EMAIL: ${{ secrets.FROM_EMAIL }}
+        run: |
+          if [ "${{ github.event.inputs.campaign_type }}" == "reminders" ]; then
+            python email_system/email_sender.py --reminders
+          else
+            python email_system/email_sender.py
+          fi
