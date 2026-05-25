@@ -1,1138 +1,1898 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>StudyBuddy Admin Panel</title>
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    :root {
-      --bg-primary: #0f172a;
-      --bg-secondary: #1e293b;
-      --bg-card: #334155;
-      --text-primary: #e2e8f0;
-      --text-secondary: #94a3b8;
-      --accent: #60a5fa;
-      --accent-hover: #3b82f6;
-      --success: #22c55e;
-      --warning: #f59e0b;
-      --danger: #ef4444;
-      --border: #475569;
-    }
-    body {
-      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-      background: var(--bg-primary);
-      color: var(--text-primary);
-      min-height: 100vh;
-    }
-    .login-screen {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      min-height: 100vh;
-      background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 100%);
-    }
-    .login-box {
-      background: var(--bg-secondary);
-      padding: 40px;
-      border-radius: 16px;
-      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-      width: 100%;
-      max-width: 400px;
-      border: 1px solid var(--border);
-    }
-    .login-box h1 {
-      text-align: center;
-      margin-bottom: 8px;
-      font-size: 28px;
-      color: var(--accent);
-    }
-    .login-box .subtitle {
-      text-align: center;
-      color: var(--text-secondary);
-      margin-bottom: 30px;
-      font-size: 14px;
-    }
-    .form-group {
-      margin-bottom: 20px;
-    }
-    .form-group label {
-      display: block;
-      margin-bottom: 8px;
-      font-size: 14px;
-      font-weight: 500;
-      color: var(--text-secondary);
-    }
-    .form-group input, .form-group select, .form-group textarea {
-      width: 100%;
-      padding: 12px 16px;
-      background: var(--bg-primary);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      color: var(--text-primary);
-      font-size: 15px;
-      transition: border-color 0.3s;
-      font-family: inherit;
-    }
-    .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
-      outline: none;
-      border-color: var(--accent);
-    }
-    .btn {
-      padding: 12px 24px;
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
-      font-weight: 600;
-      font-size: 14px;
-      transition: all 0.3s;
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-    }
-    .btn-primary {
-      background: var(--accent);
-      color: white;
-      width: 100%;
-      justify-content: center;
-    }
-    .btn-primary:hover { background: var(--accent-hover); transform: translateY(-1px); }
-    .btn-success { background: var(--success); color: white; }
-    .btn-danger { background: var(--danger); color: white; }
-    .btn-warning { background: var(--warning); color: white; }
-    .error-msg {
-      color: var(--danger);
-      font-size: 13px;
-      margin-top: 8px;
-      text-align: center;
-      display: none;
-    }
-    .app-container { display: none; }
-    .sidebar {
-      width: 260px;
-      background: var(--bg-secondary);
-      height: 100vh;
-      position: fixed;
-      left: 0;
-      top: 0;
-      padding: 20px 0;
-      border-right: 1px solid var(--border);
-      overflow-y: auto;
-    }
-    .sidebar-header {
-      padding: 0 20px 20px;
-      border-bottom: 1px solid var(--border);
-      margin-bottom: 10px;
-    }
-    .sidebar-header h2 {
-      color: var(--accent);
-      font-size: 22px;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-    .sidebar-header .version {
-      font-size: 11px;
-      color: var(--text-secondary);
-      margin-top: 4px;
-    }
-    .nav-section { margin-bottom: 8px; }
-    .nav-section-title {
-      padding: 12px 20px 6px;
-      font-size: 11px;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      color: var(--text-secondary);
-      font-weight: 600;
-    }
-    .nav-item {
-      padding: 12px 20px;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      transition: all 0.2s;
-      border-left: 3px solid transparent;
-      font-size: 14px;
-    }
-    .nav-item:hover {
-      background: rgba(96, 165, 250, 0.1);
-      color: var(--accent);
-    }
-    .nav-item.active {
-      background: rgba(96, 165, 250, 0.15);
-      color: var(--accent);
-      border-left-color: var(--accent);
-    }
-    .nav-icon {
-      font-size: 18px;
-      width: 24px;
-      text-align: center;
-    }
-    .main-content {
-      margin-left: 260px;
-      padding: 30px;
-      min-height: 100vh;
-    }
-    .top-bar {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 30px;
-      padding-bottom: 20px;
-      border-bottom: 1px solid var(--border);
-    }
-    .top-bar h1 { font-size: 24px; font-weight: 600; }
-    .top-bar-actions {
-      display: flex;
-      gap: 12px;
-      align-items: center;
-    }
-    .user-badge {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 8px 16px;
-      background: var(--bg-secondary);
-      border-radius: 20px;
-      font-size: 13px;
-    }
-    .user-badge .role { color: var(--accent); font-weight: 600; }
-    .stats-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-      gap: 20px;
-      margin-bottom: 30px;
-    }
-    .stat-card {
-      background: var(--bg-secondary);
-      padding: 24px;
-      border-radius: 12px;
-      border: 1px solid var(--border);
-      transition: transform 0.3s, box-shadow 0.3s;
-    }
-    .stat-card:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.3);
-    }
-    .stat-card .stat-icon { font-size: 32px; margin-bottom: 12px; }
-    .stat-card .stat-value { font-size: 32px; font-weight: 700; color: var(--accent); margin-bottom: 4px; }
-    .stat-card .stat-label { color: var(--text-secondary); font-size: 14px; }
-    .stat-card .stat-change { font-size: 12px; margin-top: 8px; display: flex; align-items: center; gap: 4px; }
-    .stat-change.up { color: var(--success); }
-    .stat-change.down { color: var(--danger); }
-    .section-card {
-      background: var(--bg-secondary);
-      border-radius: 12px;
-      border: 1px solid var(--border);
-      margin-bottom: 24px;
-      overflow: hidden;
-    }
-    .section-header {
-      padding: 20px 24px;
-      border-bottom: 1px solid var(--border);
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-    .section-header h3 { font-size: 16px; font-weight: 600; }
-    .section-body { padding: 24px; }
-    .data-table {
-      width: 100%;
-      border-collapse: collapse;
-    }
-    .data-table th {
-      text-align: left;
-      padding: 12px 16px;
-      font-size: 12px;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      color: var(--text-secondary);
-      font-weight: 600;
-      border-bottom: 1px solid var(--border);
-    }
-    .data-table td {
-      padding: 14px 16px;
-      border-bottom: 1px solid var(--border);
-      font-size: 14px;
-    }
-    .data-table tr:hover td { background: rgba(96, 165, 250, 0.05); }
-    .status-badge {
-      padding: 4px 12px;
-      border-radius: 12px;
-      font-size: 12px;
-      font-weight: 600;
-      display: inline-block;
-    }
-    .status-active { background: rgba(34, 197, 94, 0.2); color: var(--success); }
-    .status-suspended { background: rgba(239, 68, 68, 0.2); color: var(--danger); }
-    .status-expired { background: rgba(245, 158, 11, 0.2); color: var(--warning); }
-    .form-row {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-      gap: 20px;
-      margin-bottom: 20px;
-    }
-    .search-bar {
-      display: flex;
-      gap: 12px;
-      margin-bottom: 20px;
-    }
-    .search-bar input {
-      flex: 1;
-      padding: 10px 16px;
-      background: var(--bg-primary);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      color: var(--text-primary);
-      font-size: 14px;
-    }
-    .search-bar input:focus { outline: none; border-color: var(--accent); }
-    .pagination {
-      display: flex;
-      justify-content: center;
-      gap: 8px;
-      margin-top: 20px;
-    }
-    .pagination button {
-      padding: 8px 14px;
-      background: var(--bg-primary);
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      color: var(--text-primary);
-      cursor: pointer;
-      font-size: 13px;
-    }
-    .pagination button:hover { border-color: var(--accent); color: var(--accent); }
-    .pagination button.active { background: var(--accent); color: white; border-color: var(--accent); }
-    .modal-overlay {
-      display: none;
-      position: fixed;
-      top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(0, 0, 0, 0.7);
-      z-index: 1000;
-      align-items: center;
-      justify-content: center;
-    }
-    .modal-overlay.active { display: flex; }
-    .modal {
-      background: var(--bg-secondary);
-      border-radius: 16px;
-      width: 90%;
-      max-width: 600px;
-      max-height: 90vh;
-      overflow-y: auto;
-      border: 1px solid var(--border);
-    }
-    .modal-header {
-      padding: 20px 24px;
-      border-bottom: 1px solid var(--border);
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-    .modal-header h3 { font-size: 18px; }
-    .modal-close {
-      background: none;
-      border: none;
-      color: var(--text-secondary);
-      font-size: 24px;
-      cursor: pointer;
-      padding: 0;
-      width: 32px;
-      height: 32px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      border-radius: 8px;
-    }
-    .modal-close:hover { background: var(--bg-card); color: var(--text-primary); }
-    .modal-body { padding: 24px; }
-    .modal-footer {
-      padding: 16px 24px;
-      border-top: 1px solid var(--border);
-      display: flex;
-      justify-content: flex-end;
-      gap: 12px;
-    }
-    .toast-container {
-      position: fixed;
-      top: 20px;
-      right: 20px;
-      z-index: 2000;
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-    }
-    .toast {
-      padding: 14px 20px;
-      border-radius: 10px;
-      color: white;
-      font-size: 14px;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      animation: slideIn 0.3s ease;
-      box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
-      max-width: 400px;
-    }
-    .toast.success { background: var(--success); }
-    .toast.error { background: var(--danger); }
-    .toast.info { background: var(--accent); }
-    @keyframes slideIn {
-      from { transform: translateX(100%); opacity: 0; }
-      to { transform: translateX(0); opacity: 1; }
-    }
-    .chart-container {
-      height: 300px;
-      background: var(--bg-primary);
-      border-radius: 8px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: var(--text-secondary);
-      font-size: 14px;
-    }
-    .empty-state {
-      text-align: center;
-      padding: 60px 20px;
-      color: var(--text-secondary);
-    }
-    .empty-state .icon { font-size: 48px; margin-bottom: 16px; opacity: 0.5; }
-    .section-view { display: none; }
-    .section-view.active { display: block; }
-    @media (max-width: 768px) {
-      .sidebar { width: 200px; }
-      .main-content { margin-left: 200px; padding: 20px; }
-      .stats-grid { grid-template-columns: 1fr; }
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StudyBuddy - AI Study Assistant</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        :root {
+            --bg-primary: #0a0e1a;
+            --bg-secondary: #111827;
+            --bg-tertiary: #1a2234;
+            --bg-card: #1e293b;
+            --bg-hover: #243447;
+            --bg-input: #0f172a;
+            --border: #2d3a4f;
+            --border-focus: #3b82f6;
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+            --accent: #3b82f6;
+            --accent-hover: #2563eb;
+            --accent-light: #60a5fa;
+            --success: #10b981;
+            --success-bg: rgba(16, 185, 129, 0.1);
+            --warning: #f59e0b;
+            --warning-bg: rgba(245, 158, 11, 0.1);
+            --danger: #ef4444;
+            --danger-bg: rgba(239, 68, 68, 0.1);
+            --info: #06b6d4;
+            --gradient-start: #3b82f6;
+            --gradient-end: #8b5cf6;
+            --shadow-sm: 0 1px 2px rgba(0,0,0,0.3);
+            --shadow: 0 4px 6px -1px rgba(0,0,0,0.4);
+            --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.5);
+            --shadow-glow: 0 0 20px rgba(59, 130, 246, 0.3);
+            --radius-sm: 6px;
+            --radius: 10px;
+            --radius-lg: 16px;
+            --transition: all 0.2s ease;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: var(--bg-secondary); }
+        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+        /* Layout */
+        .app-container {
+            display: grid;
+            grid-template-columns: 280px 1fr;
+            min-height: 100vh;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            background: var(--bg-secondary);
+            border-right: 1px solid var(--border);
+            padding: 24px 0;
+            position: fixed;
+            width: 280px;
+            height: 100vh;
+            overflow-y: auto;
+            z-index: 100;
+        }
+
+        .sidebar-brand {
+            padding: 0 24px 24px;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 16px;
+        }
+
+        .sidebar-brand h1 {
+            font-size: 24px;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .sidebar-brand h1 i {
+            -webkit-text-fill-color: var(--accent);
+            font-size: 28px;
+        }
+
+        .sidebar-brand .version {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-top: 4px;
+            font-weight: 500;
+        }
+
+        .nav-section {
+            margin-bottom: 8px;
+        }
+
+        .nav-section-title {
+            padding: 16px 24px 8px;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: var(--text-muted);
+            font-weight: 700;
+        }
+
+        .nav-item {
+            padding: 12px 24px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            transition: var(--transition);
+            border-left: 3px solid transparent;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            position: relative;
+        }
+
+        .nav-item:hover {
+            background: rgba(59, 130, 246, 0.08);
+            color: var(--text-primary);
+        }
+
+        .nav-item.active {
+            background: rgba(59, 130, 246, 0.12);
+            color: var(--accent-light);
+            border-left-color: var(--accent);
+        }
+
+        .nav-item i {
+            font-size: 18px;
+            width: 24px;
+            text-align: center;
+            transition: transform 0.2s;
+        }
+
+        .nav-item:hover i {
+            transform: scale(1.1);
+        }
+
+        .nav-badge {
+            margin-left: auto;
+            background: var(--danger);
+            color: white;
+            font-size: 10px;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-weight: 700;
+        }
+
+        .server-status {
+            margin: 16px 24px 0;
+            padding: 12px 16px;
+            background: var(--bg-tertiary);
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 12px;
+        }
+
+        .server-status .indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--danger);
+            animation: pulse 2s infinite;
+        }
+
+        .server-status.connected .indicator {
+            background: var(--success);
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        /* Main Content */
+        .main-content {
+            margin-left: 280px;
+            padding: 32px;
+            min-height: 100vh;
+        }
+
+        .top-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 32px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .top-bar h2 {
+            font-size: 28px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .top-bar h2 i {
+            color: var(--accent);
+        }
+
+        .user-menu {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .btn-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: var(--radius);
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: var(--transition);
+            font-size: 16px;
+        }
+
+        .btn-icon:hover {
+            background: var(--bg-hover);
+            color: var(--text-primary);
+            border-color: var(--accent);
+        }
+
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 14px;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .user-avatar:hover {
+            transform: scale(1.05);
+            box-shadow: var(--shadow-glow);
+        }
+
+        /* Cards */
+        .card-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 20px;
+            margin-bottom: 28px;
+        }
+
+        .stat-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 24px;
+            transition: var(--transition);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--gradient-start), var(--gradient-end));
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-lg);
+            border-color: var(--border-focus);
+        }
+
+        .stat-card:hover::before {
+            opacity: 1;
+        }
+
+        .stat-card .stat-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: var(--radius);
+            background: rgba(59, 130, 246, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            color: var(--accent);
+            margin-bottom: 16px;
+        }
+
+        .stat-card .stat-value {
+            font-size: 32px;
+            font-weight: 800;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .stat-card .stat-label {
+            color: var(--text-secondary);
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .stat-card .stat-change {
+            margin-top: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .stat-change.up { color: var(--success); }
+        .stat-change.down { color: var(--danger); }
+
+        /* Section Cards */
+        .section-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            margin-bottom: 24px;
+            overflow: hidden;
+        }
+
+        .section-header {
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .section-header h3 {
+            font-size: 16px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .section-header h3 i {
+            color: var(--accent);
+        }
+
+        .section-body {
+            padding: 24px;
+        }
+
+        /* Buttons */
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: var(--radius);
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 14px;
+            transition: var(--transition);
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-family: inherit;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+            color: white;
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
+        }
+
+        .btn-secondary {
+            background: var(--bg-card);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+        }
+
+        .btn-secondary:hover {
+            background: var(--bg-hover);
+            border-color: var(--accent);
+        }
+
+        .btn-success {
+            background: var(--success);
+            color: white;
+        }
+
+        .btn-danger {
+            background: var(--danger);
+            color: white;
+        }
+
+        .btn-sm {
+            padding: 6px 14px;
+            font-size: 13px;
+        }
+
+        /* Forms */
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-secondary);
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 12px 16px;
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            color: var(--text-primary);
+            font-size: 14px;
+            font-family: inherit;
+            transition: var(--transition);
+        }
+
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 20px;
+        }
+
+        /* Tables */
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .data-table th {
+            text-align: left;
+            padding: 12px 16px;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            color: var(--text-muted);
+            font-weight: 700;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .data-table td {
+            padding: 14px 16px;
+            border-bottom: 1px solid var(--border);
+            font-size: 14px;
+        }
+
+        .data-table tr:hover td {
+            background: rgba(59, 130, 246, 0.03);
+        }
+
+        .data-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        /* Status Badges */
+        .badge {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 700;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .badge-success { background: var(--success-bg); color: var(--success); }
+        .badge-warning { background: var(--warning-bg); color: var(--warning); }
+        .badge-danger { background: var(--danger-bg); color: var(--danger); }
+        .badge-info { background: rgba(6, 182, 212, 0.1); color: var(--info); }
+
+        /* Upload Area */
+        .upload-area {
+            border: 2px dashed var(--border);
+            border-radius: var(--radius-lg);
+            padding: 48px 24px;
+            text-align: center;
+            transition: var(--transition);
+            cursor: pointer;
+            background: var(--bg-tertiary);
+        }
+
+        .upload-area:hover {
+            border-color: var(--accent);
+            background: rgba(59, 130, 246, 0.05);
+        }
+
+        .upload-area i {
+            font-size: 48px;
+            color: var(--accent);
+            margin-bottom: 16px;
+        }
+
+        .upload-area h4 {
+            font-size: 16px;
+            margin-bottom: 8px;
+        }
+
+        .upload-area p {
+            color: var(--text-muted);
+            font-size: 13px;
+        }
+
+        /* Q&A Cards */
+        .qa-card {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 20px;
+            margin-bottom: 16px;
+            transition: var(--transition);
+        }
+
+        .qa-card:hover {
+            border-color: var(--accent);
+            transform: translateX(4px);
+        }
+
+        .qa-card .qa-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .qa-card .qa-type {
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            padding: 4px 10px;
+            border-radius: 4px;
+            background: var(--bg-card);
+            color: var(--text-muted);
+        }
+
+        .qa-card .qa-question {
+            font-size: 15px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            line-height: 1.5;
+        }
+
+        .qa-card .qa-answer {
+            padding: 12px;
+            background: var(--bg-card);
+            border-radius: var(--radius-sm);
+            font-size: 14px;
+            color: var(--text-secondary);
+            display: none;
+        }
+
+        .qa-card .qa-answer.revealed {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* AOC Mode */
+        .aoc-section {
+            padding: 16px;
+            margin-bottom: 12px;
+            border-radius: var(--radius);
+            border-left: 4px solid var(--border);
+            background: var(--bg-tertiary);
+            transition: var(--transition);
+        }
+
+        .aoc-section.aoc-hidden {
+            border-left-color: var(--warning);
+            background: var(--warning-bg);
+            cursor: pointer;
+        }
+
+        .aoc-section.aoc-hidden .aoc-content {
+            filter: blur(8px);
+            user-select: none;
+        }
+
+        .aoc-section.aoc-revealed .aoc-content {
+            filter: none;
+            animation: unblur 0.5s ease;
+        }
+
+        @keyframes unblur {
+            from { filter: blur(8px); opacity: 0.3; }
+            to { filter: blur(0); opacity: 1; }
+        }
+
+        .aoc-section .aoc-label {
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .aoc-section.aoc-hidden .aoc-label {
+            color: var(--warning);
+        }
+
+        /* Goal Items */
+        .goal-item {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 16px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            margin-bottom: 12px;
+            transition: var(--transition);
+        }
+
+        .goal-item:hover {
+            border-color: var(--accent);
+        }
+
+        .goal-item.completed {
+            opacity: 0.6;
+            border-color: var(--success);
+        }
+
+        .goal-item .goal-checkbox {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            border: 2px solid var(--border);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: var(--transition);
+            flex-shrink: 0;
+        }
+
+        .goal-item .goal-checkbox:hover {
+            border-color: var(--accent);
+        }
+
+        .goal-item.completed .goal-checkbox {
+            background: var(--success);
+            border-color: var(--success);
+            color: white;
+        }
+
+        .goal-item .goal-content {
+            flex: 1;
+        }
+
+        .goal-item .goal-title {
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .goal-item .goal-meta {
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        /* Quote Card */
+        .quote-card {
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(139, 92, 246, 0.1));
+            border: 1px solid rgba(59, 130, 246, 0.2);
+            border-radius: var(--radius-lg);
+            padding: 24px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .quote-card::before {
+            content: '"';
+            position: absolute;
+            top: -10px;
+            left: 16px;
+            font-size: 80px;
+            color: rgba(59, 130, 246, 0.2);
+            font-family: serif;
+            line-height: 1;
+        }
+
+        .quote-card .quote-text {
+            font-size: 18px;
+            font-style: italic;
+            line-height: 1.6;
+            margin-bottom: 12px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .quote-card .quote-author {
+            font-size: 14px;
+            color: var(--text-muted);
+            font-weight: 600;
+        }
+
+        /* Toast Notifications */
+        .toast-container {
+            position: fixed;
+            top: 24px;
+            right: 24px;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .toast {
+            padding: 16px 20px;
+            border-radius: var(--radius);
+            color: white;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            animation: slideInRight 0.3s ease;
+            box-shadow: var(--shadow-lg);
+            max-width: 400px;
+            font-weight: 500;
+        }
+
+        .toast.success { background: var(--success); }
+        .toast.error { background: var(--danger); }
+        .toast.info { background: var(--accent); }
+
+        @keyframes slideInRight {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        /* Modal */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(4px);
+        }
+
+        .modal-overlay.active { display: flex; }
+
+        .modal {
+            background: var(--bg-secondary);
+            border-radius: var(--radius-lg);
+            width: 90%;
+            max-width: 560px;
+            max-height: 90vh;
+            overflow-y: auto;
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow-lg);
+            animation: modalIn 0.3s ease;
+        }
+
+        @keyframes modalIn {
+            from { transform: scale(0.95); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+
+        .modal-header {
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-header h3 {
+            font-size: 18px;
+            font-weight: 700;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            font-size: 20px;
+            cursor: pointer;
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: var(--radius);
+            transition: var(--transition);
+        }
+
+        .modal-close:hover {
+            background: var(--bg-card);
+            color: var(--text-primary);
+        }
+
+        .modal-body { padding: 24px; }
+        .modal-footer {
+            padding: 16px 24px;
+            border-top: 1px solid var(--border);
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-muted);
+        }
+
+        .empty-state i {
+            font-size: 64px;
+            margin-bottom: 20px;
+            opacity: 0.3;
+        }
+
+        .empty-state h4 {
+            font-size: 18px;
+            margin-bottom: 8px;
+            color: var(--text-secondary);
+        }
+
+        /* Progress Bar */
+        .progress-bar {
+            height: 8px;
+            background: var(--bg-tertiary);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 8px;
+        }
+
+        .progress-bar .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--gradient-start), var(--gradient-end));
+            border-radius: 4px;
+            transition: width 0.5s ease;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .app-container { grid-template-columns: 1fr; }
+            .sidebar { display: none; }
+            .main-content { margin-left: 0; padding: 20px; }
+            .card-grid { grid-template-columns: 1fr; }
+        }
+
+        /* Animations */
+        .fade-in {
+            animation: fadeIn 0.4s ease;
+        }
+
+        /* Hide/Show sections */
+        .section-view { display: none; }
+        .section-view.active { display: block; animation: fadeIn 0.3s ease; }
+
+        /* Loading spinner */
+        .spinner {
+            width: 24px;
+            height: 24px;
+            border: 2px solid var(--border);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
 </head>
 <body>
-  <div class="login-screen" id="loginScreen">
-    <div class="login-box">
-      <h1>StudyBuddy</h1>
-      <p class="subtitle">Admin Control Panel</p>
-      <div class="form-group">
-        <label>Worker URL</label>
-        <input type="text" id="workerUrl" placeholder="https://your-worker.workers.dev">
-      </div>
-      <div class="form-group">
-        <label>Admin Key</label>
-        <input type="password" id="adminKey" placeholder="Enter your admin key">
-      </div>
-      <button class="btn btn-primary" onclick="doLogin()">
-        <span>🔐</span> Access Dashboard
-      </button>
-      <p class="error-msg" id="loginError">Invalid credentials</p>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-brand">
+                <h1><i class="fas fa-graduation-cap"></i> StudyBuddy</h1>
+                <div class="version">v1.0.0 &bull; Local Server</div>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-section-title">Overview</div>
+                <div class="nav-item active" onclick="showSection('dashboard', this)">
+                    <i class="fas fa-chart-line"></i>
+                    <span>Dashboard</span>
+                </div>
+                <div class="nav-item" onclick="showSection('materials', this)">
+                    <i class="fas fa-book"></i>
+                    <span>Materials</span>
+                </div>
+                <div class="nav-item" onclick="showSection('qa', this)">
+                    <i class="fas fa-question-circle"></i>
+                    <span>Q&A Practice</span>
+                </div>
+                <div class="nav-item" onclick="showSection('aoc', this)">
+                    <i class="fas fa-bullseye"></i>
+                    <span>AOC Mode</span>
+                </div>
+                <div class="nav-item" onclick="showSection('goals', this)">
+                    <i class="fas fa-flag-checkered"></i>
+                    <span>Goals</span>
+                </div>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-section-title">System</div>
+                <div class="nav-item" onclick="showSection('settings', this)">
+                    <i class="fas fa-cog"></i>
+                    <span>Settings</span>
+                </div>
+            </div>
+
+            <div class="server-status" id="serverStatus">
+                <div class="indicator"></div>
+                <span id="serverStatusText">Checking server...</span>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Top Bar -->
+            <div class="top-bar">
+                <h2 id="pageTitle"><i class="fas fa-chart-line"></i> Dashboard</h2>
+                <div class="user-menu">
+                    <button class="btn-icon" onclick="refreshData()" title="Refresh">
+                        <i class="fas fa-sync-alt"></i>
+                    </button>
+                    <button class="btn-icon" onclick="showNotifications()" title="Notifications">
+                        <i class="fas fa-bell"></i>
+                    </button>
+                    <div class="user-avatar" id="userAvatar">SB</div>
+                </div>
+            </div>
+
+            <!-- DASHBOARD SECTION -->
+            <div class="section-view active" id="dashboardSection">
+                <div class="card-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon"><i class="fas fa-fire"></i></div>
+                        <div class="stat-value" id="dashStreak">0</div>
+                        <div class="stat-label">Day Streak</div>
+                        <div class="stat-change up"><i class="fas fa-arrow-up"></i> Keep it going!</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon"><i class="fas fa-book-open"></i></div>
+                        <div class="stat-value" id="dashMaterials">0</div>
+                        <div class="stat-label">Materials</div>
+                        <div class="stat-change up"><i class="fas fa-plus"></i> Upload more</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon"><i class="fas fa-question-circle"></i></div>
+                        <div class="stat-value" id="dashQA">0</div>
+                        <div class="stat-label">Q&A Generated</div>
+                        <div class="stat-change up"><i class="fas fa-brain"></i> Practice daily</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon"><i class="fas fa-clock"></i></div>
+                        <div class="stat-value" id="dashMinutes">0</div>
+                        <div class="stat-label">Study Minutes</div>
+                        <div class="stat-change up"><i class="fas fa-chart-line"></i> Total time</div>
+                    </div>
+                </div>
+
+                <div class="section-card">
+                    <div class="section-header">
+                        <h3><i class="fas fa-quote-left"></i> Daily Motivation</h3>
+                    </div>
+                    <div class="section-body">
+                        <div class="quote-card" id="quoteCard">
+                            <div class="quote-text" id="quoteText">Loading...</div>
+                            <div class="quote-author" id="quoteAuthor">...</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="section-card">
+                    <div class="section-header">
+                        <h3><i class="fas fa-bullseye"></i> Active Goals</h3>
+                        <button class="btn btn-sm btn-primary" onclick="showSection('goals', null)">
+                            <i class="fas fa-plus"></i> Add Goal
+                        </button>
+                    </div>
+                    <div class="section-body" id="dashboardGoals">
+                        <div class="empty-state">
+                            <i class="fas fa-flag"></i>
+                            <h4>No active goals</h4>
+                            <p>Set goals to track your study progress</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- MATERIALS SECTION -->
+            <div class="section-view" id="materialsSection">
+                <div class="section-card">
+                    <div class="section-header">
+                        <h3><i class="fas fa-book"></i> Study Materials</h3>
+                        <button class="btn btn-primary" onclick="document.getElementById('fileInput').click()">
+                            <i class="fas fa-cloud-upload-alt"></i> Upload Material
+                        </button>
+                        <input type="file" id="fileInput" style="display:none" accept=".pdf,.docx,.doc,.xlsx,.xls,.csv,.txt" onchange="uploadFile(this)">
+                    </div>
+                    <div class="section-body">
+                        <div class="upload-area" onclick="document.getElementById('fileInput').click()">
+                            <i class="fas fa-cloud-upload-alt"></i>
+                            <h4>Drop files here or click to upload</h4>
+                            <p>Supports PDF, Word, Excel, CSV, TXT</p>
+                        </div>
+                        <div id="materialsList" style="margin-top: 24px;">
+                            <div class="empty-state">
+                                <i class="fas fa-book-open"></i>
+                                <h4>No materials yet</h4>
+                                <p>Upload your first study material to get started</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Q&A PRACTICE SECTION -->
+            <div class="section-view" id="qaSection">
+                <div class="section-card">
+                    <div class="section-header">
+                        <h3><i class="fas fa-question-circle"></i> Q&A Practice</h3>
+                        <select id="qaMaterialSelect" class="form-group" style="width: auto; min-width: 200px;">
+                            <option value="">Select a material...</option>
+                        </select>
+                    </div>
+                    <div class="section-body">
+                        <div id="qaContainer">
+                            <div class="empty-state">
+                                <i class="fas fa-brain"></i>
+                                <h4>No Q&A yet</h4>
+                                <p>Select a material and generate questions to start practicing</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- AOC MODE SECTION -->
+            <div class="section-view" id="aocSection">
+                <div class="section-card">
+                    <div class="section-header">
+                        <h3><i class="fas fa-bullseye"></i> AOC Mode - Active Recall</h3>
+                        <select id="aocMaterialSelect" class="form-group" style="width: auto; min-width: 200px;">
+                            <option value="">Select a material...</option>
+                        </select>
+                    </div>
+                    <div class="section-body">
+                        <div class="quote-card" style="margin-bottom: 20px;">
+                            <div class="quote-text" style="font-size: 14px;">
+                                <i class="fas fa-info-circle" style="color: var(--accent);"></i>
+                                Key sections are hidden. Click on hidden sections to reveal them and test your memory.
+                            </div>
+                        </div>
+                        <div id="aocContainer">
+                            <div class="empty-state">
+                                <i class="fas fa-eye-slash"></i>
+                                <h4>Select a material</h4>
+                                <p>Choose a material with highlighted sections to practice active recall</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- GOALS SECTION -->
+            <div class="section-view" id="goalsSection">
+                <div class="section-card">
+                    <div class="section-header">
+                        <h3><i class="fas fa-flag-checkered"></i> Study Goals</h3>
+                        <button class="btn btn-primary" onclick="openModal('addGoalModal')">
+                            <i class="fas fa-plus"></i> New Goal
+                        </button>
+                    </div>
+                    <div class="section-body">
+                        <div class="form-row" style="margin-bottom: 24px;">
+                            <div class="form-group">
+                                <label>Goal Title</label>
+                                <input type="text" id="goalTitle" placeholder="e.g., Complete Chapter 3">
+                            </div>
+                            <div class="form-group">
+                                <label>Target Date</label>
+                                <input type="date" id="goalDate">
+                            </div>
+                            <div class="form-group">
+                                <label>Reminder</label>
+                                <select id="goalReminder">
+                                    <option value="daily">Daily</option>
+                                    <option value="weekly">Weekly</option>
+                                    <option value="none">None</option>
+                                </select>
+                            </div>
+                        </div>
+                        <button class="btn btn-primary" onclick="addGoal()" style="margin-bottom: 24px;">
+                            <i class="fas fa-plus"></i> Add Goal
+                        </button>
+                        <div id="goalsList">
+                            <div class="empty-state">
+                                <i class="fas fa-flag"></i>
+                                <h4>No goals yet</h4>
+                                <p>Set study goals to stay on track</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SETTINGS SECTION -->
+            <div class="section-view" id="settingsSection">
+                <div class="section-card">
+                    <div class="section-header">
+                        <h3><i class="fas fa-cog"></i> Settings</h3>
+                    </div>
+                    <div class="section-body">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Email Address</label>
+                                <input type="email" id="settingsEmail" placeholder="your@email.com">
+                            </div>
+                            <div class="form-group">
+                                <label>License Key</label>
+                                <input type="text" id="settingsLicense" placeholder="SB-XXXX-XXXX-XXXX">
+                            </div>
+                        </div>
+                        <button class="btn btn-primary" onclick="saveSettings()">
+                            <i class="fas fa-save"></i> Save Settings
+                        </button>
+
+                        <hr style="border: none; border-top: 1px solid var(--border); margin: 32px 0;">
+
+                        <h4 style="margin-bottom: 16px; color: var(--text-secondary);">Data Management</h4>
+                        <div style="display: flex; gap: 12px;">
+                            <button class="btn btn-secondary" onclick="exportData()">
+                                <i class="fas fa-download"></i> Export All Data
+                            </button>
+                            <button class="btn btn-danger" onclick="clearAllData()">
+                                <i class="fas fa-trash-alt"></i> Clear All Data
+                            </button>
+                        </div>
+
+                        <hr style="border: none; border-top: 1px solid var(--border); margin: 32px 0;">
+
+                        <h4 style="margin-bottom: 16px; color: var(--text-secondary);">About</h4>
+                        <p style="color: var(--text-muted); font-size: 14px; line-height: 1.6;">
+                            <strong>StudyBuddy</strong> v1.0.0<br>
+                            Offline-first AI study assistant<br>
+                            Your data is stored locally on your computer.<br><br>
+                            <i class="fas fa-shield-alt"></i> Built with privacy in mind.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </main>
     </div>
-  </div>
 
-  <div class="app-container" id="appContainer">
-    <div class="sidebar">
-      <div class="sidebar-header">
-        <h2>📚 StudyBuddy</h2>
-        <p class="version">Admin v1.0</p>
-      </div>
-      <div class="nav-section">
-        <div class="nav-section-title">Overview</div>
-        <div class="nav-item active" onclick="showSection('dashboard', this)">
-          <span class="nav-icon">📊</span><span>Dashboard</span>
+    <!-- Toast Container -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- Modals -->
+    <div class="modal-overlay" id="addGoalModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3><i class="fas fa-flag"></i> Add New Goal</h3>
+                <button class="modal-close" onclick="closeModal('addGoalModal')">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Goal Title</label>
+                    <input type="text" id="modalGoalTitle" placeholder="What do you want to achieve?">
+                </div>
+                <div class="form-group">
+                    <label>Description (optional)</label>
+                    <textarea id="modalGoalDesc" placeholder="Add details..."></textarea>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Target Date</label>
+                        <input type="date" id="modalGoalDate">
+                    </div>
+                    <div class="form-group">
+                        <label>Reminder</label>
+                        <select id="modalGoalReminder">
+                            <option value="daily">Daily</option>
+                            <option value="weekly">Weekly</option>
+                            <option value="none">None</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal('addGoalModal')">Cancel</button>
+                <button class="btn btn-primary" onclick="addGoalFromModal()">
+                    <i class="fas fa-plus"></i> Add Goal
+                </button>
+            </div>
         </div>
-        <div class="nav-item" onclick="showSection('users', this)">
-          <span class="nav-icon">👥</span><span>Users</span>
-        </div>
-        <div class="nav-item" onclick="showSection('analytics', this)">
-          <span class="nav-icon">📈</span><span>Analytics</span>
-        </div>
-      </div>
-      <div class="nav-section">
-        <div class="nav-section-title">Communication</div>
-        <div class="nav-item" onclick="showSection('emails', this)">
-          <span class="nav-icon">✉️</span><span>Email Campaigns</span>
-        </div>
-        <div class="nav-item" onclick="showSection('messages', this)">
-          <span class="nav-icon">🔔</span><span>In-App Messages</span>
-        </div>
-      </div>
-      <div class="nav-section">
-        <div class="nav-section-title">Management</div>
-        <div class="nav-item" onclick="showSection('licenses', this)">
-          <span class="nav-icon">🔑</span><span>License Keys</span>
-        </div>
-        <div class="nav-item" onclick="showSection('updates', this)">
-          <span class="nav-icon">🔄</span><span>App Updates</span>
-        </div>
-        <div class="nav-item" onclick="showSection('employees', this)">
-          <span class="nav-icon">🛡️</span><span>Employees</span>
-        </div>
-        <div class="nav-item" onclick="showSection('settings', this)">
-          <span class="nav-icon">⚙️</span><span>Settings</span>
-        </div>
-      </div>
-      <div class="nav-section">
-        <div class="nav-item" onclick="logout()" style="margin-top: 20px;">
-          <span class="nav-icon">🚪</span><span>Logout</span>
-        </div>
-      </div>
     </div>
 
-    <div class="main-content">
-      <div class="top-bar">
-        <h1 id="pageTitle">Dashboard</h1>
-        <div class="top-bar-actions">
-          <div class="user-badge">
-            <span>👤</span>
-            <span class="role" id="userRole">Super Admin</span>
-          </div>
-        </div>
-      </div>
+    <script>
+        // ============ CONFIGURATION ============
+        const API_BASE = 'http://localhost:8080';
+        let currentSection = 'dashboard';
+        let materials = [];
+        let currentQA = [];
+        let currentQAIndex = 0;
 
-      <!-- DASHBOARD -->
-      <div class="section-view active" id="dashboardSection">
-        <div class="stats-grid">
-          <div class="stat-card">
-            <div class="stat-icon">👥</div>
-            <div class="stat-value" id="dashTotalUsers">0</div>
-            <div class="stat-label">Total Users</div>
-            <div class="stat-change up"><span>↑</span> <span id="dashNewUsers">0</span> new today</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-icon">⚡</div>
-            <div class="stat-value" id="dashActiveUsers">0</div>
-            <div class="stat-label">Active (7 days)</div>
-            <div class="stat-change up"><span>📊</span> Engaged users</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-icon">📖</div>
-            <div class="stat-value" id="dashSessions">0</div>
-            <div class="stat-label">Study Sessions Today</div>
-            <div class="stat-change up"><span>🎯</span> Learning in progress</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-icon">⏱️</div>
-            <div class="stat-value" id="dashStudyMinutes">0</div>
-            <div class="stat-label">Study Minutes Today</div>
-            <div class="stat-change up"><span>🔥</span> Time invested</div>
-          </div>
-        </div>
-        <div class="section-card">
-          <div class="section-header"><h3>📈 Activity Overview (Last 7 Days)</h3></div>
-          <div class="section-body"><div class="chart-container" id="activityChart">Chart will load here...</div></div>
-        </div>
-        <div class="section-card">
-          <div class="section-header">
-            <h3>🔔 Recent Admin Messages</h3>
-            <button class="btn btn-primary" onclick="openModal('createMessageModal')"><span>➕</span> New Message</button>
-          </div>
-          <div class="section-body">
-            <table class="data-table" id="recentMessagesTable">
-              <thead><tr><th>Title</th><th>Priority</th><th>Target</th><th>Sent</th><th>Status</th></tr></thead>
-              <tbody></tbody>
-            </table>
-          </div>
-        </div>
-      </div>
+        // ============ INITIALIZATION ============
+        document.addEventListener('DOMContentLoaded', () => {
+            checkServerConnection();
+            loadDashboard();
+            loadMaterials();
+            loadGoals();
+            loadQuote();
 
-      <!-- USERS -->
-      <div class="section-view" id="usersSection">
-        <div class="section-card">
-          <div class="section-header">
-            <h3>👥 All Users</h3>
-            <button class="btn btn-success" onclick="openModal('createUserModal')"><span>➕</span> Add User</button>
-          </div>
-          <div class="section-body">
-            <div class="search-bar">
-              <input type="text" id="userSearch" placeholder="Search by email or name..." onkeyup="searchUsers()">
-              <select id="userStatusFilter" onchange="loadUsers()">
-                <option value="">All Status</option>
-                <option value="active">Active</option>
-                <option value="suspended">Suspended</option>
-                <option value="expired">Expired</option>
-              </select>
-            </div>
-            <table class="data-table" id="usersTable">
-              <thead>
-                <tr>
-                  <th>Email</th><th>Name</th><th>License</th><th>Status</th><th>Platform</th>
-                  <th>Version</th><th>Registered</th><th>Last Active</th><th>Sessions</th><th>Actions</th>
-                </tr>
-              </thead>
-              <tbody></tbody>
-            </table>
-            <div class="pagination" id="usersPagination"></div>
-          </div>
-        </div>
-      </div>
+            // Set default date for goal inputs
+            const tomorrow = new Date();
+            tomorrow.setDate(tomorrow.getDate() + 7);
+            const dateStr = tomorrow.toISOString().split('T')[0];
+            document.getElementById('goalDate').value = dateStr;
+            document.getElementById('modalGoalDate').value = dateStr;
+        });
 
-      <!-- ANALYTICS -->
-      <div class="section-view" id="analyticsSection">
-        <div class="section-card">
-          <div class="section-header">
-            <h3>📈 Usage Statistics</h3>
-            <select id="statsPeriod" onchange="loadStats()">
-              <option value="7">Last 7 Days</option>
-              <option value="30">Last 30 Days</option>
-              <option value="90">Last 90 Days</option>
-            </select>
-          </div>
-          <div class="section-body"><div class="chart-container" id="statsChart">Statistics will appear here...</div></div>
-        </div>
-      </div>
+        // ============ SERVER CONNECTION ============
+        async function checkServerConnection() {
+            const statusEl = document.getElementById('serverStatus');
+            const statusText = document.getElementById('serverStatusText');
 
-      <!-- EMAILS -->
-      <div class="section-view" id="emailsSection">
-        <div class="section-card">
-          <div class="section-header">
-            <h3>✉️ Email Campaigns</h3>
-            <button class="btn btn-primary" onclick="openModal('createBroadcastModal')"><span>➕</span> New Campaign</button>
-          </div>
-          <div class="section-body">
-            <div class="empty-state">
-              <div class="icon">📧</div>
-              <p>No email campaigns yet. Create your first broadcast!</p>
-            </div>
-          </div>
-        </div>
-      </div>
+            try {
+                const response = await fetch(`${API_BASE}/health`, { 
+                    method: 'GET',
+                    headers: { 'Content-Type': 'application/json' }
+                });
 
-      <!-- MESSAGES -->
-      <div class="section-view" id="messagesSection">
-        <div class="section-card">
-          <div class="section-header">
-            <h3>🔔 In-App Messages</h3>
-            <button class="btn btn-primary" onclick="openModal('createMessageModal')"><span>➕</span> New Message</button>
-          </div>
-          <div class="section-body">
-            <table class="data-table" id="messagesTable">
-              <thead><tr><th>Title</th><th>Priority</th><th>Target</th><th>Created</th><th>Status</th><th>Read Count</th><th>Actions</th></tr></thead>
-              <tbody></tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-
-      <!-- LICENSES -->
-      <div class="section-view" id="licensesSection">
-        <div class="section-card">
-          <div class="section-header"><h3>🔑 License Key Generator</h3></div>
-          <div class="section-body">
-            <div class="form-row">
-              <div class="form-group">
-                <label>Email Address</label>
-                <input type="email" id="licenseEmail" placeholder="user@example.com">
-              </div>
-              <div class="form-group">
-                <label>Platform</label>
-                <select id="licensePlatform">
-                  <option value="windows">Windows</option>
-                  <option value="mac">Mac</option>
-                  <option value="linux">Linux</option>
-                  <option value="android">Android</option>
-                  <option value="ios">iOS</option>
-                </select>
-              </div>
-              <div class="form-group">
-                <label>Expires In (days, optional)</label>
-                <input type="number" id="licenseExpires" placeholder="Leave empty for no expiry">
-              </div>
-            </div>
-            <button class="btn btn-primary" onclick="generateLicense()"><span>🔑</span> Generate License</button>
-            <div id="generatedLicense" style="margin-top: 20px; padding: 20px; background: var(--bg-primary); border-radius: 8px; display: none;">
-              <p style="color: var(--success); font-weight: 600; margin-bottom: 10px;">✅ License Generated!</p>
-              <p style="font-family: monospace; font-size: 18px;" id="licenseDisplay"></p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- UPDATES -->
-      <div class="section-view" id="updatesSection">
-        <div class="section-card">
-          <div class="section-header"><h3>🔄 App Update Management</h3></div>
-          <div class="section-body">
-            <div class="form-row">
-              <div class="form-group">
-                <label>Latest Version</label>
-                <input type="text" id="latestVersion" placeholder="1.0.0">
-              </div>
-              <div class="form-group">
-                <label>Windows Download URL</label>
-                <input type="url" id="winUrl" placeholder="https://github.com/.../StudyBuddy-Windows.exe">
-              </div>
-            </div>
-            <div class="form-row">
-              <div class="form-group">
-                <label>Mac Download URL</label>
-                <input type="url" id="macUrl" placeholder="https://github.com/.../StudyBuddy-Mac.dmg">
-              </div>
-              <div class="form-group">
-                <label>Android Download URL</label>
-                <input type="url" id="androidUrl" placeholder="https://github.com/.../StudyBuddy.apk">
-              </div>
-            </div>
-            <div class="form-group">
-              <label>Release Notes</label>
-              <textarea id="releaseNotes" placeholder="What's new in this version..."></textarea>
-            </div>
-            <label style="display: flex; align-items: center; gap: 10px; margin-bottom: 20px; cursor: pointer;">
-              <input type="checkbox" id="forceUpdate"> Force update (block older versions)
-            </label>
-            <button class="btn btn-primary" onclick="saveUpdateConfig()"><span>💾</span> Save Update Configuration</button>
-          </div>
-        </div>
-      </div>
-
-      <!-- EMPLOYEES -->
-      <div class="section-view" id="employeesSection">
-        <div class="section-card">
-          <div class="section-header">
-            <h3>🛡️ Employee Management</h3>
-            <button class="btn btn-success" onclick="openModal('createEmployeeModal')"><span>➕</span> Add Employee</button>
-          </div>
-          <div class="section-body">
-            <table class="data-table" id="employeesTable">
-              <thead><tr><th>Email</th><th>Name</th><th>Role</th><th>Status</th><th>Permissions</th><th>Created</th><th>Actions</th></tr></thead>
-              <tbody></tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-
-      <!-- SETTINGS -->
-      <div class="section-view" id="settingsSection">
-        <div class="section-card">
-          <div class="section-header"><h3>⚙️ Settings</h3></div>
-          <div class="section-body">
-            <div class="form-group">
-              <label>Change Master Password</label>
-              <input type="password" id="currentPassword" placeholder="Current password">
-            </div>
-            <div class="form-group"><input type="password" id="newPassword" placeholder="New password"></div>
-            <div class="form-group"><input type="password" id="confirmPassword" placeholder="Confirm new password"></div>
-            <button class="btn btn-primary" onclick="changePassword()"><span>🔐</span> Update Password</button>
-            <hr style="border: none; border-top: 1px solid var(--border); margin: 30px 0;">
-            <h4 style="margin-bottom: 15px;">Danger Zone</h4>
-            <button class="btn btn-danger" onclick="clearAllData()"><span>⚠️</span> Clear All User Data</button>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- MODALS -->
-  <div class="modal-overlay" id="createUserModal">
-    <div class="modal">
-      <div class="modal-header"><h3>➕ Add New User</h3><button class="modal-close" onclick="closeModal('createUserModal')">&times;</button></div>
-      <div class="modal-body">
-        <div class="form-group"><label>Email Address *</label><input type="email" id="newUserEmail" placeholder="user@example.com"></div>
-        <div class="form-group"><label>Name</label><input type="text" id="newUserName" placeholder="John Doe"></div>
-        <div class="form-row">
-          <div class="form-group"><label>Status</label><select id="newUserStatus"><option value="active">Active</option><option value="suspended">Suspended</option></select></div>
-          <div class="form-group"><label>Role</label><select id="newUserRole"><option value="user">User</option><option value="premium">Premium</option></select></div>
-        </div>
-      </div>
-      <div class="modal-footer">
-        <button class="btn" onclick="closeModal('createUserModal')" style="background: var(--bg-card); color: var(--text-primary);">Cancel</button>
-        <button class="btn btn-success" onclick="createUser()">Create User</button>
-      </div>
-    </div>
-  </div>
-
-  <div class="modal-overlay" id="createMessageModal">
-    <div class="modal">
-      <div class="modal-header"><h3>🔔 Create In-App Message</h3><button class="modal-close" onclick="closeModal('createMessageModal')">&times;</button></div>
-      <div class="modal-body">
-        <div class="form-group"><label>Title *</label><input type="text" id="msgTitle" placeholder="Important Update"></div>
-        <div class="form-group"><label>Message Body *</label><textarea id="msgBody" placeholder="Your message content..."></textarea></div>
-        <div class="form-row">
-          <div class="form-group"><label>Priority</label><select id="msgPriority"><option value="normal">Normal (inbox)</option><option value="urgent">Urgent (popup)</option></select></div>
-          <div class="form-group"><label>Target Audience</label><select id="msgTarget"><option value="all">All Users</option><option value="active">Active Users</option><option value="inactive">Inactive Users</option></select></div>
-        </div>
-      </div>
-      <div class="modal-footer">
-        <button class="btn" onclick="closeModal('createMessageModal')" style="background: var(--bg-card); color: var(--text-primary);">Cancel</button>
-        <button class="btn btn-success" onclick="createMessage()">Send Message</button>
-      </div>
-    </div>
-  </div>
-
-  <div class="modal-overlay" id="createBroadcastModal">
-    <div class="modal">
-      <div class="modal-header"><h3>✉️ New Email Campaign</h3><button class="modal-close" onclick="closeModal('createBroadcastModal')">&times;</button></div>
-      <div class="modal-body">
-        <div class="form-group"><label>Subject *</label><input type="text" id="broadcastSubject" placeholder="Your email subject"></div>
-        <div class="form-group"><label>Email Body *</label><textarea id="broadcastBody" rows="8" placeholder="Write your email content here..."></textarea></div>
-        <div class="form-row">
-          <div class="form-group"><label>Target</label><select id="broadcastTarget"><option value="all">All Users</option><option value="active">Active Users</option><option value="inactive">Inactive Users</option></select></div>
-          <div class="form-group"><label>Schedule (optional)</label><input type="datetime-local" id="broadcastSchedule"></div>
-        </div>
-      </div>
-      <div class="modal-footer">
-        <button class="btn" onclick="closeModal('createBroadcastModal')" style="background: var(--bg-card); color: var(--text-primary);">Cancel</button>
-        <button class="btn btn-success" onclick="createBroadcast()">Send Campaign</button>
-      </div>
-    </div>
-  </div>
-
-  <div class="modal-overlay" id="createEmployeeModal">
-    <div class="modal">
-      <div class="modal-header"><h3>🛡️ Add Employee</h3><button class="modal-close" onclick="closeModal('createEmployeeModal')">&times;</button></div>
-      <div class="modal-body">
-        <div class="form-group"><label>Email *</label><input type="email" id="empEmail" placeholder="employee@company.com"></div>
-        <div class="form-group"><label>Name</label><input type="text" id="empName" placeholder="Jane Smith"></div>
-        <div class="form-group"><label>Role</label><select id="empRole"><option value="admin">Admin (Full Access)</option><option value="support">Support (View + Email)</option><option value="analyst">Analyst (View Only)</option></select></div>
-      </div>
-      <div class="modal-footer">
-        <button class="btn" onclick="closeModal('createEmployeeModal')" style="background: var(--bg-card); color: var(--text-primary);">Cancel</button>
-        <button class="btn btn-success" onclick="createEmployee()">Add Employee</button>
-      </div>
-    </div>
-  </div>
-
-  <div class="toast-container" id="toastContainer"></div>
-
-  <script>
-    let WORKER_URL = localStorage.getItem('sb_worker_url') || '';
-    let ADMIN_KEY = localStorage.getItem('sb_admin_key') || '';
-    let CURRENT_SECTION = 'dashboard';
-    let USERS_DATA = [];
-    let USERS_PAGE = 0;
-    let USERS_LIMIT = 50;
-
-    document.addEventListener('DOMContentLoaded', () => {
-      if (WORKER_URL && ADMIN_KEY) {
-        document.getElementById('workerUrl').value = WORKER_URL;
-        document.getElementById('adminKey').value = ADMIN_KEY;
-        showApp();
-        loadDashboard();
-      }
-    });
-
-    async function doLogin() {
-      const url = document.getElementById('workerUrl').value.trim();
-      const key = document.getElementById('adminKey').value.trim();
-      if (!url || !key) { showError('Please fill in all fields'); return; }
-      WORKER_URL = url.replace(/\/$/, '');
-      ADMIN_KEY = key;
-      try {
-        const res = await fetch(WORKER_URL + '/api/admin/dashboard', { headers: { 'X-Admin-Key': ADMIN_KEY } });
-        if (!res.ok) throw new Error('Invalid admin key');
-        localStorage.setItem('sb_worker_url', WORKER_URL);
-        localStorage.setItem('sb_admin_key', ADMIN_KEY);
-        showApp();
-        loadDashboard();
-        showToast('Welcome to StudyBuddy Admin!', 'success');
-      } catch (err) { showError('Invalid worker URL or admin key'); }
-    }
-
-    function showError(msg) {
-      const el = document.getElementById('loginError');
-      el.textContent = msg;
-      el.style.display = 'block';
-    }
-
-    function showApp() {
-      document.getElementById('loginScreen').style.display = 'none';
-      document.getElementById('appContainer').style.display = 'block';
-    }
-
-    function logout() {
-      localStorage.removeItem('sb_worker_url');
-      localStorage.removeItem('sb_admin_key');
-      location.reload();
-    }
-
-    function showSection(section, el) {
-      CURRENT_SECTION = section;
-      document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
-      if (el) el.classList.add('active');
-      document.querySelectorAll('.section-view').forEach(view => view.classList.remove('active'));
-      document.getElementById(section + 'Section').classList.add('active');
-      const titles = { dashboard: 'Dashboard', users: 'User Management', analytics: 'Analytics', emails: 'Email Campaigns', messages: 'In-App Messages', licenses: 'License Keys', updates: 'App Updates', employees: 'Employee Management', settings: 'Settings' };
-      document.getElementById('pageTitle').textContent = titles[section] || section;
-      if (section === 'dashboard') loadDashboard();
-      if (section === 'users') loadUsers();
-      if (section === 'messages') loadMessages();
-      if (section === 'employees') loadEmployees();
-      if (section === 'updates') loadUpdateConfig();
-    }
-
-    async function apiGet(endpoint) {
-      const res = await fetch(WORKER_URL + endpoint, { headers: { 'X-Admin-Key': ADMIN_KEY } });
-      if (!res.ok) throw new Error('HTTP ' + res.status);
-      return res.json();
-    }
-
-    async function apiPost(endpoint, data) {
-      const res = await fetch(WORKER_URL + endpoint, {
-        method: 'POST',
-        headers: { 'X-Admin-Key': ADMIN_KEY, 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
-      });
-      if (!res.ok) throw new Error('HTTP ' + res.status);
-      return res.json();
-    }
-
-    async function apiPut(endpoint, data) {
-      const res = await fetch(WORKER_URL + endpoint, {
-        method: 'PUT',
-        headers: { 'X-Admin-Key': ADMIN_KEY, 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
-      });
-      if (!res.ok) throw new Error('HTTP ' + res.status);
-      return res.json();
-    }
-
-    async function apiDelete(endpoint) {
-      const res = await fetch(WORKER_URL + endpoint, { method: 'DELETE', headers: { 'X-Admin-Key': ADMIN_KEY } });
-      if (!res.ok) throw new Error('HTTP ' + res.status);
-      return res.json();
-    }
-
-    async function loadDashboard() {
-      try {
-        const data = await apiGet('/api/admin/dashboard');
-        document.getElementById('dashTotalUsers').textContent = data.total_users || 0;
-        document.getElementById('dashNewUsers').textContent = data.new_today || 0;
-        document.getElementById('dashActiveUsers').textContent = data.active_7d || 0;
-        document.getElementById('dashSessions').textContent = data.sessions_today || 0;
-        document.getElementById('dashStudyMinutes').textContent = data.study_minutes_today || 0;
-        const chartEl = document.getElementById('activityChart');
-        if (data.last_7_days && data.last_7_days.length > 0) {
-          let html = '<div style="display: flex; align-items: flex-end; gap: 8px; height: 250px; padding: 20px;">';
-          data.last_7_days.forEach(day => {
-            const height = Math.max(5, (day.active_sessions || 0) * 5);
-            html += '<div style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 8px;"><div style="width: 100%; background: var(--accent); border-radius: 4px 4px 0 0; height: ' + height + 'px; min-height: 5px;"></div><span style="font-size: 11px; color: var(--text-secondary);">' + day.date.slice(5) + '</span><span style="font-size: 11px; color: var(--accent); font-weight: 600;">' + (day.active_sessions || 0) + '</span></div>';
-          });
-          html += '</div>';
-          chartEl.innerHTML = html;
+                if (response.ok) {
+                    const data = await response.json();
+                    statusEl.classList.add('connected');
+                    statusText.textContent = `Server connected (${data.version})`;
+                    showToast('Connected to local server', 'success');
+                } else {
+                    throw new Error('Server error');
+                }
+            } catch (error) {
+                statusEl.classList.remove('connected');
+                statusText.textContent = 'Server offline - Start StudyBuddy-Server.exe';
+                showToast('Local server not running. Start the server first.', 'error');
+            }
         }
-        loadRecentMessages();
-      } catch (err) { showToast('Failed to load dashboard: ' + err.message, 'error'); }
-    }
 
-    async function loadRecentMessages() {
-      try {
-        const data = await apiGet('/api/admin/messages');
-        const tbody = document.querySelector('#recentMessagesTable tbody');
-        tbody.innerHTML = '';
-        (data.messages || []).slice(0, 5).forEach(msg => {
-          const row = document.createElement('tr');
-          row.innerHTML = '<td>' + msg.title + '</td><td><span class="status-badge status-' + (msg.priority === 'urgent' ? 'suspended' : 'active') + '">' + msg.priority + '</span></td><td>' + msg.target + '</td><td>' + new Date(msg.created_at).toLocaleDateString() + '</td><td><span class="status-badge status-' + msg.status + '">' + msg.status + '</span></td>';
-          tbody.appendChild(row);
-        });
-      } catch (err) { console.error('Failed to load messages:', err); }
-    }
+        // ============ NAVIGATION ============
+        function showSection(section, el) {
+            currentSection = section;
 
-    async function loadUsers() {
-      try {
-        const search = document.getElementById('userSearch').value;
-        const status = document.getElementById('userStatusFilter').value;
-        let url = '/api/admin/users?limit=' + USERS_LIMIT + '&offset=' + (USERS_PAGE * USERS_LIMIT);
-        if (search) url += '&search=' + encodeURIComponent(search);
-        if (status) url += '&status=' + status;
-        const data = await apiGet(url);
-        USERS_DATA = data.users || [];
-        const tbody = document.querySelector('#usersTable tbody');
-        tbody.innerHTML = '';
-        USERS_DATA.forEach(user => {
-          const row = document.createElement('tr');
-          row.innerHTML = '<td>' + user.email + '</td><td>' + (user.name || '-') + '</td><td><code style="font-size: 12px;">' + user.license + '</code></td><td><span class="status-badge status-' + user.status + '">' + user.status + '</span></td><td>' + (user.platform || '-') + '</td><td>' + (user.app_version || '-') + '</td><td>' + new Date(user.registered_at).toLocaleDateString() + '</td><td>' + (user.last_active ? new Date(user.last_active).toLocaleDateString() : 'Never') + '</td><td>' + (user.study_sessions || 0) + '</td><td><button class="btn btn-warning" style="padding: 6px 12px; font-size: 12px;" onclick="toggleUserStatus(&quot;' + user.email + '&quot;, &quot;' + user.status + '&quot;)">' + (user.status === 'active' ? 'Suspend' : 'Activate') + '</button><button class="btn btn-danger" style="padding: 6px 12px; font-size: 12px; margin-left: 4px;" onclick="deleteUser(&quot;' + user.email + '&quot;)">Delete</button></td>';
-          tbody.appendChild(row);
-        });
-        const totalPages = Math.ceil((data.total || 0) / USERS_LIMIT);
-        const pagEl = document.getElementById('usersPagination');
-        pagEl.innerHTML = '';
-        for (let i = 0; i < totalPages; i++) {
-          const btn = document.createElement('button');
-          btn.textContent = i + 1;
-          btn.className = i === USERS_PAGE ? 'active' : '';
-          btn.onclick = () => { USERS_PAGE = i; loadUsers(); };
-          pagEl.appendChild(btn);
+            // Update nav items
+            document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
+            if (el) el.classList.add('active');
+
+            // Update sections
+            document.querySelectorAll('.section-view').forEach(view => view.classList.remove('active'));
+            document.getElementById(section + 'Section').classList.add('active');
+
+            // Update page title
+            const titles = {
+                dashboard: '<i class="fas fa-chart-line"></i> Dashboard',
+                materials: '<i class="fas fa-book"></i> Materials',
+                qa: '<i class="fas fa-question-circle"></i> Q&A Practice',
+                aoc: '<i class="fas fa-bullseye"></i> AOC Mode',
+                goals: '<i class="fas fa-flag-checkered"></i> Goals',
+                settings: '<i class="fas fa-cog"></i> Settings'
+            };
+            document.getElementById('pageTitle').innerHTML = titles[section] || section;
+
+            // Refresh data
+            if (section === 'dashboard') loadDashboard();
+            if (section === 'materials') loadMaterials();
+            if (section === 'qa') loadQAMaterials();
+            if (section === 'aoc') loadAOCMaterials();
+            if (section === 'goals') loadGoals();
         }
-      } catch (err) { showToast('Failed to load users: ' + err.message, 'error'); }
-    }
 
-    function searchUsers() { USERS_PAGE = 0; loadUsers(); }
+        // ============ API HELPERS ============
+        async function apiGet(endpoint) {
+            const response = await fetch(`${API_BASE}${endpoint}`);
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            return response.json();
+        }
 
-    async function toggleUserStatus(email, currentStatus) {
-      const newStatus = currentStatus === 'active' ? 'suspended' : 'active';
-      try {
-        await apiPut('/api/admin/users/' + encodeURIComponent(email), { status: newStatus });
-        showToast('User ' + (newStatus === 'active' ? 'activated' : 'suspended'), 'success');
-        loadUsers();
-      } catch (err) { showToast('Failed to update user: ' + err.message, 'error'); }
-    }
+        async function apiPost(endpoint, data) {
+            const response = await fetch(`${API_BASE}${endpoint}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            return response.json();
+        }
 
-    async function deleteUser(email) {
-      if (!confirm('Are you sure you want to delete ' + email + '? This cannot be undone.')) return;
-      try {
-        await apiDelete('/api/admin/users/' + encodeURIComponent(email));
-        showToast('User deleted', 'success');
-        loadUsers();
-      } catch (err) { showToast('Failed to delete user: ' + err.message, 'error'); }
-    }
+        async function apiDelete(endpoint) {
+            const response = await fetch(`${API_BASE}${endpoint}`, { method: 'DELETE' });
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            return response.json();
+        }
 
-    async function createUser() {
-      const email = document.getElementById('newUserEmail').value.trim();
-      const name = document.getElementById('newUserName').value.trim();
-      const status = document.getElementById('newUserStatus').value;
-      const role = document.getElementById('newUserRole').value;
-      if (!email || !email.includes('@')) { showToast('Valid email required', 'error'); return; }
-      try {
-        await apiPost('/api/admin/users', { email, name, status, role });
-        showToast('User created successfully', 'success');
-        closeModal('createUserModal');
-        loadUsers();
-        document.getElementById('newUserEmail').value = '';
-        document.getElementById('newUserName').value = '';
-      } catch (err) { showToast('Failed to create user: ' + err.message, 'error'); }
-    }
+        // ============ DASHBOARD ============
+        async function loadDashboard() {
+            try {
+                const stats = await apiGet('/api/stats');
+                document.getElementById('dashStreak').textContent = stats.current_streak || 0;
+                document.getElementById('dashMaterials').textContent = stats.materials_count || 0;
+                document.getElementById('dashQA').textContent = stats.total_qa_answered || 0;
+                document.getElementById('dashMinutes').textContent = stats.total_minutes || 0;
 
-    async function loadMessages() {
-      try {
-        const data = await apiGet('/api/admin/messages');
-        const tbody = document.querySelector('#messagesTable tbody');
-        tbody.innerHTML = '';
-        (data.messages || []).forEach(msg => {
-          const row = document.createElement('tr');
-          row.innerHTML = '<td>' + msg.title + '</td><td><span class="status-badge status-' + (msg.priority === 'urgent' ? 'suspended' : 'active') + '">' + msg.priority + '</span></td><td>' + msg.target + '</td><td>' + new Date(msg.created_at).toLocaleDateString() + '</td><td><span class="status-badge status-' + msg.status + '">' + msg.status + '</span></td><td>' + (msg.read_count || 0) + '</td><td><button class="btn btn-danger" style="padding: 6px 12px; font-size: 12px;" onclick="deleteMessage(&quot;' + msg.id + '&quot;)">Delete</button></td>';
-          tbody.appendChild(row);
+                // Load goals for dashboard
+                const goals = await apiGet('/api/goals');
+                const activeGoals = goals.filter(g => !g.completed).slice(0, 3);
+                const goalsContainer = document.getElementById('dashboardGoals');
+
+                if (activeGoals.length > 0) {
+                    goalsContainer.innerHTML = activeGoals.map(g => `
+                        <div class="goal-item">
+                            <div class="goal-checkbox" onclick="completeGoal(${g.id})"></div>
+                            <div class="goal-content">
+                                <div class="goal-title">${g.title}</div>
+                                <div class="goal-meta">Due: ${g.target_date} | ${g.reminder_frequency} reminder</div>
+                            </div>
+                        </div>
+                    `).join('');
+                }
+            } catch (error) {
+                console.error('Dashboard error:', error);
+            }
+        }
+
+        // ============ MATERIALS ============
+        async function uploadFile(input) {
+            const file = input.files[0];
+            if (!file) return;
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                showToast('Uploading...', 'info');
+                const response = await fetch(`${API_BASE}/api/upload`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    showToast(`Uploaded: ${result.filename}`, 'success');
+                    loadMaterials();
+                } else {
+                    showToast(result.error || 'Upload failed', 'error');
+                }
+            } catch (error) {
+                showToast('Upload failed: ' + error.message, 'error');
+            }
+
+            input.value = '';
+        }
+
+        async function loadMaterials() {
+            try {
+                materials = await apiGet('/api/materials');
+                const container = document.getElementById('materialsList');
+
+                if (materials.length === 0) {
+                    container.innerHTML = `
+                        <div class="empty-state">
+                            <i class="fas fa-book-open"></i>
+                            <h4>No materials yet</h4>
+                            <p>Upload your first study material to get started</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                container.innerHTML = `
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>File</th>
+                                <th>Type</th>
+                                <th>Uploaded</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${materials.map(m => `
+                                <tr>
+                                    <td><i class="fas fa-file" style="margin-right: 8px; color: var(--accent);"></i>${m.filename}</td>
+                                    <td><span class="badge badge-info">${m.file_type}</span></td>
+                                    <td>${new Date(m.uploaded_at).toLocaleDateString()}</td>
+                                    <td>
+                                        <button class="btn btn-sm btn-primary" onclick="generateQA(${m.id})">
+                                            <i class="fas fa-magic"></i> Q&A
+                                        </button>
+                                        <button class="btn btn-sm btn-secondary" onclick="viewAOC(${m.id})">
+                                            <i class="fas fa-eye"></i> AOC
+                                        </button>
+                                    </td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                `;
+            } catch (error) {
+                console.error('Materials error:', error);
+            }
+        }
+
+        // ============ Q&A ============
+        async function loadQAMaterials() {
+            const select = document.getElementById('qaMaterialSelect');
+            select.innerHTML = '<option value="">Select a material...</option>';
+
+            try {
+                const mats = await apiGet('/api/materials');
+                mats.forEach(m => {
+                    const option = document.createElement('option');
+                    option.value = m.id;
+                    option.textContent = m.filename;
+                    select.appendChild(option);
+                });
+
+                select.onchange = (e) => {
+                    if (e.target.value) loadQAForMaterial(e.target.value);
+                };
+            } catch (error) {
+                console.error('QA materials error:', error);
+            }
+        }
+
+        async function generateQA(materialId) {
+            try {
+                showToast('Generating Q&A with AI...', 'info');
+                const result = await apiPost(`/api/materials/${materialId}/qa`, { num_questions: 10 });
+
+                if (result.success) {
+                    showToast(`Generated ${result.qa_count} questions!`, 'success');
+                    showSection('qa', null);
+                    document.getElementById('qaMaterialSelect').value = materialId;
+                    loadQAForMaterial(materialId);
+                }
+            } catch (error) {
+                showToast('Q&A generation failed: ' + error.message, 'error');
+            }
+        }
+
+        async function loadQAForMaterial(materialId) {
+            try {
+                const qaList = await apiGet(`/api/materials/${materialId}/qa`);
+                currentQA = qaList;
+                currentQAIndex = 0;
+                showCurrentQuestion();
+            } catch (error) {
+                console.error('Load QA error:', error);
+            }
+        }
+
+        function showCurrentQuestion() {
+            const container = document.getElementById('qaContainer');
+
+            if (currentQA.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-brain"></i>
+                        <h4>No Q&A generated yet</h4>
+                        <button class="btn btn-primary" onclick="generateQA(document.getElementById('qaMaterialSelect').value)">
+                            <i class="fas fa-magic"></i> Generate Q&A
+                        </button>
+                    </div>
+                `;
+                return;
+            }
+
+            const qa = currentQA[currentQAIndex];
+            container.innerHTML = `
+                <div class="qa-card">
+                    <div class="qa-header">
+                        <span class="qa-type">${qa.type}</span>
+                        <span class="badge badge-${qa.difficulty === 'easy' ? 'success' : qa.difficulty === 'hard' ? 'danger' : 'warning'}">${qa.difficulty}</span>
+                    </div>
+                    <div class="qa-question">${qa.question}</div>
+                    <div class="qa-answer" id="qaAnswer_${qa.id}">
+                        <strong>Answer:</strong> ${qa.answer}
+                    </div>
+                    <div style="display: flex; gap: 12px; margin-top: 16px;">
+                        <button class="btn btn-secondary" onclick="revealAnswer('${qa.id}')">
+                            <i class="fas fa-eye"></i> Reveal Answer
+                        </button>
+                        <button class="btn btn-success" onclick="markAnswer(true)">
+                            <i class="fas fa-check"></i> Got it
+                        </button>
+                        <button class="btn btn-danger" onclick="markAnswer(false)">
+                            <i class="fas fa-times"></i> Need practice
+                        </button>
+                        <button class="btn btn-secondary" onclick="nextQuestion()" style="margin-left: auto;">
+                            <i class="fas fa-arrow-right"></i> Next
+                        </button>
+                    </div>
+                </div>
+                <div style="text-align: center; color: var(--text-muted); font-size: 13px; margin-top: 12px;">
+                    Question ${currentQAIndex + 1} of ${currentQA.length}
+                </div>
+            `;
+        }
+
+        function revealAnswer(qaId) {
+            const answerEl = document.getElementById(`qaAnswer_${qaId}`);
+            if (answerEl) answerEl.classList.add('revealed');
+        }
+
+        function markAnswer(correct) {
+            const mood = correct ? 'achievement' : 'comeback';
+            const message = correct ? 'Great job! Keep it up!' : 'Keep practicing, you will get it!';
+            showToast(message, correct ? 'success' : 'info');
+            nextQuestion();
+        }
+
+        function nextQuestion() {
+            if (currentQA.length > 0) {
+                currentQAIndex = (currentQAIndex + 1) % currentQA.length;
+                showCurrentQuestion();
+            }
+        }
+
+        // ============ AOC MODE ============
+        async function loadAOCMaterials() {
+            const select = document.getElementById('aocMaterialSelect');
+            select.innerHTML = '<option value="">Select a material...</option>';
+
+            try {
+                const mats = await apiGet('/api/materials');
+                mats.forEach(m => {
+                    const option = document.createElement('option');
+                    option.value = m.id;
+                    option.textContent = m.filename;
+                    select.appendChild(option);
+                });
+
+                select.onchange = (e) => {
+                    if (e.target.value) loadAOCForMaterial(e.target.value);
+                };
+            } catch (error) {
+                console.error('AOC materials error:', error);
+            }
+        }
+
+        async function viewAOC(materialId) {
+            showSection('aoc', null);
+            document.getElementById('aocMaterialSelect').value = materialId;
+            loadAOCForMaterial(materialId);
+        }
+
+        async function loadAOCForMaterial(materialId) {
+            try {
+                const result = await apiGet(`/api/materials/${materialId}/aoc`);
+                const container = document.getElementById('aocContainer');
+
+                if (!result.sections || result.sections.length === 0) {
+                    container.innerHTML = `
+                        <div class="empty-state">
+                            <i class="fas fa-file-alt"></i>
+                            <h4>No sections detected</h4>
+                            <p>Upload a material with clear section headings</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                container.innerHTML = result.sections.map((section, idx) => `
+                    <div class="aoc-section ${section.is_aoc ? 'aoc-hidden' : ''}" onclick="toggleAOC(this)">
+                        <div class="aoc-label">
+                            <i class="fas ${section.is_aoc ? 'fa-eye-slash' : 'fa-eye'}"></i>
+                            ${section.is_aoc ? 'HIDDEN - Click to reveal' : 'Visible Section'}
+                        </div>
+                        <div class="aoc-content">
+                            <strong>${section.title}</strong>
+                            <p style="margin-top: 8px; color: var(--text-secondary);">${section.content.substring(0, 200)}${section.content.length > 200 ? '...' : ''}</p>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (error) {
+                console.error('AOC error:', error);
+            }
+        }
+
+        function toggleAOC(element) {
+            if (element.classList.contains('aoc-hidden')) {
+                element.classList.remove('aoc-hidden');
+                element.classList.add('aoc-revealed');
+            }
+        }
+
+        // ============ GOALS ============
+        async function loadGoals() {
+            try {
+                const goals = await apiGet('/api/goals');
+                const container = document.getElementById('goalsList');
+
+                if (goals.length === 0) {
+                    container.innerHTML = `
+                        <div class="empty-state">
+                            <i class="fas fa-flag"></i>
+                            <h4>No goals yet</h4>
+                            <p>Set study goals to stay on track</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                container.innerHTML = goals.map(g => `
+                    <div class="goal-item ${g.completed ? 'completed' : ''}">
+                        <div class="goal-checkbox" onclick="completeGoal(${g.id})">
+                            ${g.completed ? '<i class="fas fa-check"></i>' : ''}
+                        </div>
+                        <div class="goal-content">
+                            <div class="goal-title">${g.title}</div>
+                            <div class="goal-meta">
+                                <i class="fas fa-calendar"></i> ${g.target_date} 
+                                <i class="fas fa-bell" style="margin-left: 12px;"></i> ${g.reminder_frequency}
+                            </div>
+                        </div>
+                        ${g.completed ? '<span class="badge badge-success"><i class="fas fa-check"></i> Done</span>' : ''}
+                    </div>
+                `).join('');
+            } catch (error) {
+                console.error('Goals error:', error);
+            }
+        }
+
+        async function addGoal() {
+            const title = document.getElementById('goalTitle').value.trim();
+            const date = document.getElementById('goalDate').value;
+            const reminder = document.getElementById('goalReminder').value;
+
+            if (!title) {
+                showToast('Please enter a goal title', 'error');
+                return;
+            }
+
+            try {
+                await apiPost('/api/goals', {
+                    title: title,
+                    description: '',
+                    target_date: date,
+                    reminder_frequency: reminder
+                });
+
+                showToast('Goal added!', 'success');
+                document.getElementById('goalTitle').value = '';
+                loadGoals();
+                loadDashboard();
+            } catch (error) {
+                showToast('Failed to add goal', 'error');
+            }
+        }
+
+        async function addGoalFromModal() {
+            const title = document.getElementById('modalGoalTitle').value.trim();
+            const desc = document.getElementById('modalGoalDesc').value;
+            const date = document.getElementById('modalGoalDate').value;
+            const reminder = document.getElementById('modalGoalReminder').value;
+
+            if (!title) {
+                showToast('Please enter a goal title', 'error');
+                return;
+            }
+
+            try {
+                await apiPost('/api/goals', {
+                    title: title,
+                    description: desc,
+                    target_date: date,
+                    reminder_frequency: reminder
+                });
+
+                showToast('Goal added!', 'success');
+                closeModal('addGoalModal');
+                document.getElementById('modalGoalTitle').value = '';
+                document.getElementById('modalGoalDesc').value = '';
+                loadGoals();
+                loadDashboard();
+            } catch (error) {
+                showToast('Failed to add goal', 'error');
+            }
+        }
+
+        async function completeGoal(goalId) {
+            try {
+                await apiPost(`/api/goals/${goalId}/complete`, {});
+                showToast('Goal completed!', 'success');
+                loadGoals();
+                loadDashboard();
+            } catch (error) {
+                showToast('Failed to complete goal', 'error');
+            }
+        }
+
+        // ============ QUOTES ============
+        async function loadQuote() {
+            try {
+                const quote = await apiGet('/api/quote?mood=encouragement');
+                document.getElementById('quoteText').textContent = quote.text;
+                document.getElementById('quoteAuthor').textContent = `— ${quote.author}`;
+            } catch (error) {
+                document.getElementById('quoteText').textContent = 'The secret of getting ahead is getting started.';
+                document.getElementById('quoteAuthor').textContent = '— Mark Twain';
+            }
+        }
+
+        // ============ SETTINGS ============
+        async function saveSettings() {
+            const email = document.getElementById('settingsEmail').value;
+            const license = document.getElementById('settingsLicense').value;
+
+            try {
+                await apiPost('/api/config', { email, license });
+                showToast('Settings saved!', 'success');
+            } catch (error) {
+                showToast('Failed to save settings', 'error');
+            }
+        }
+
+        async function exportData() {
+            try {
+                const result = await apiPost('/api/export', {});
+                showToast(`Data exported to: ${result.export_path}`, 'success');
+            } catch (error) {
+                showToast('Export failed', 'error');
+            }
+        }
+
+        async function clearAllData() {
+            if (!confirm('WARNING: This will delete ALL your study data. This cannot be undone. Are you sure?')) return;
+            if (!confirm('FINAL WARNING: All materials, Q&A, goals, and progress will be PERMANENTLY deleted. Confirm?')) return;
+
+            try {
+                await apiPost('/api/clear', {});
+                showToast('All data cleared. Starting fresh!', 'success');
+                loadDashboard();
+                loadMaterials();
+                loadGoals();
+            } catch (error) {
+                showToast('Failed to clear data', 'error');
+            }
+        }
+
+        // ============ MODALS ============
+        function openModal(id) {
+            document.getElementById(id).classList.add('active');
+        }
+
+        function closeModal(id) {
+            document.getElementById(id).classList.remove('active');
+        }
+
+        document.querySelectorAll('.modal-overlay').forEach(overlay => {
+            overlay.addEventListener('click', (e) => {
+                if (e.target === overlay) overlay.classList.remove('active');
+            });
         });
-      } catch (err) { showToast('Failed to load messages: ' + err.message, 'error'); }
-    }
 
-    async function createMessage() {
-      const title = document.getElementById('msgTitle').value.trim();
-      const body = document.getElementById('msgBody').value.trim();
-      const priority = document.getElementById('msgPriority').value;
-      const target = document.getElementById('msgTarget').value;
-      if (!title || !body) { showToast('Title and body required', 'error'); return; }
-      try {
-        await apiPost('/api/admin/messages', { title, body, priority, target });
-        showToast('Message sent to all apps!', 'success');
-        closeModal('createMessageModal');
-        if (CURRENT_SECTION === 'messages') loadMessages();
-        if (CURRENT_SECTION === 'dashboard') loadRecentMessages();
-        document.getElementById('msgTitle').value = '';
-        document.getElementById('msgBody').value = '';
-      } catch (err) { showToast('Failed to create message: ' + err.message, 'error'); }
-    }
+        // ============ TOASTS ============
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
 
-    async function createBroadcast() {
-      const subject = document.getElementById('broadcastSubject').value.trim();
-      const body = document.getElementById('broadcastBody').value.trim();
-      const target = document.getElementById('broadcastTarget').value;
-      const scheduled = document.getElementById('broadcastSchedule').value;
-      if (!subject || !body) { showToast('Subject and body required', 'error'); return; }
-      try {
-        await apiPost('/api/admin/broadcast', { subject, body, target, scheduled_for: scheduled || null });
-        showToast('Email campaign queued!', 'success');
-        closeModal('createBroadcastModal');
-        document.getElementById('broadcastSubject').value = '';
-        document.getElementById('broadcastBody').value = '';
-      } catch (err) { showToast('Failed to create broadcast: ' + err.message, 'error'); }
-    }
+            const icons = {
+                success: '<i class="fas fa-check-circle"></i>',
+                error: '<i class="fas fa-exclamation-circle"></i>',
+                info: '<i class="fas fa-info-circle"></i>'
+            };
 
-    async function generateLicense() {
-      const email = document.getElementById('licenseEmail').value.trim();
-      const platform = document.getElementById('licensePlatform').value;
-      const expires = document.getElementById('licenseExpires').value;
-      if (!email || !email.includes('@')) { showToast('Valid email required', 'error'); return; }
-      try {
-        const data = await apiPost('/api/admin/license/generate', { email, platform, expires_in_days: expires ? parseInt(expires) : null });
-        document.getElementById('licenseDisplay').textContent = data.license;
-        document.getElementById('generatedLicense').style.display = 'block';
-        showToast('License generated!', 'success');
-      } catch (err) { showToast('Failed to generate license: ' + err.message, 'error'); }
-    }
+            toast.innerHTML = `${icons[type] || icons.info} <span>${message}</span>`;
+            container.appendChild(toast);
 
-    async function loadUpdateConfig() {
-      try {
-        const data = await apiGet('/api/admin/config');
-        const config = data.config || {};
-        document.getElementById('latestVersion').value = config.latest_version || '';
-        document.getElementById('winUrl').value = (config.update_urls && config.update_urls.windows) || '';
-        document.getElementById('macUrl').value = (config.update_urls && config.update_urls.mac) || '';
-        document.getElementById('androidUrl').value = (config.update_urls && config.update_urls.android) || '';
-        document.getElementById('releaseNotes').value = config.release_notes || '';
-        document.getElementById('forceUpdate').checked = config.force_update || false;
-      } catch (err) { showToast('Failed to load config: ' + err.message, 'error'); }
-    }
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateX(100%)';
+                setTimeout(() => toast.remove(), 300);
+            }, 4000);
+        }
 
-    async function saveUpdateConfig() {
-      const config = {
-        latest_version: document.getElementById('latestVersion').value,
-        update_urls: {
-          windows: document.getElementById('winUrl').value,
-          mac: document.getElementById('macUrl').value,
-          android: document.getElementById('androidUrl').value
-        },
-        release_notes: document.getElementById('releaseNotes').value,
-        force_update: document.getElementById('forceUpdate').checked
-      };
-      try {
-        await apiPut('/api/admin/config', config);
-        showToast('Update configuration saved!', 'success');
-      } catch (err) { showToast('Failed to save config: ' + err.message, 'error'); }
-    }
+        // ============ UTILITIES ============
+        function refreshData() {
+            showToast('Refreshing...', 'info');
+            loadDashboard();
+            loadMaterials();
+            loadGoals();
+            checkServerConnection();
+        }
 
-    async function loadEmployees() {
-      try {
-        const data = await apiGet('/api/admin/employees');
-        const tbody = document.querySelector('#employeesTable tbody');
-        tbody.innerHTML = '';
-        (data.employees || []).forEach(emp => {
-          const row = document.createElement('tr');
-          row.innerHTML = '<td>' + emp.email + '</td><td>' + (emp.name || '-') + '</td><td><span class="status-badge status-active">' + emp.role + '</span></td><td><span class="status-badge status-' + emp.status + '">' + emp.status + '</span></td><td>' + (emp.permissions || []).join(', ') + '</td><td>' + new Date(emp.created_at).toLocaleDateString() + '</td><td><button class="btn btn-danger" style="padding: 6px 12px; font-size: 12px;" onclick="deleteEmployee(&quot;' + emp.email + '&quot;)">Remove</button></td>';
-          tbody.appendChild(row);
+        function showNotifications() {
+            showToast('No new notifications', 'info');
+        }
+
+        // Drag and drop for upload area
+        document.addEventListener('DOMContentLoaded', () => {
+            const uploadArea = document.querySelector('.upload-area');
+            if (uploadArea) {
+                uploadArea.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    uploadArea.style.borderColor = 'var(--accent)';
+                    uploadArea.style.background = 'rgba(59, 130, 246, 0.1)';
+                });
+
+                uploadArea.addEventListener('dragleave', () => {
+                    uploadArea.style.borderColor = 'var(--border)';
+                    uploadArea.style.background = 'var(--bg-tertiary)';
+                });
+
+                uploadArea.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    uploadArea.style.borderColor = 'var(--border)';
+                    uploadArea.style.background = 'var(--bg-tertiary)';
+
+                    const files = e.dataTransfer.files;
+                    if (files.length > 0) {
+                        const input = document.getElementById('fileInput');
+                        input.files = files;
+                        uploadFile(input);
+                    }
+                });
+            }
         });
-      } catch (err) { showToast('Failed to load employees: ' + err.message, 'error'); }
-    }
-
-    async function createEmployee() {
-      const email = document.getElementById('empEmail').value.trim();
-      const name = document.getElementById('empName').value.trim();
-      const role = document.getElementById('empRole').value;
-      if (!email || !email.includes('@')) { showToast('Valid email required', 'error'); return; }
-      try {
-        await apiPost('/api/admin/employees', { email, name, role });
-        showToast('Employee added!', 'success');
-        closeModal('createEmployeeModal');
-        loadEmployees();
-        document.getElementById('empEmail').value = '';
-        document.getElementById('empName').value = '';
-      } catch (err) { showToast('Failed to add employee: ' + err.message, 'error'); }
-    }
-
-    async function changePassword() { showToast('Password change coming in v2.0', 'info'); }
-    async function clearAllData() {
-      if (!confirm('WARNING: This will delete ALL user data. Are you absolutely sure?')) return;
-      if (!confirm('This action is IRREVERSIBLE. Type "DELETE" to confirm.')) return;
-      showToast('Feature restricted for safety. Use Wrangler CLI for bulk deletion.', 'warning');
-    }
-
-    function openModal(id) { document.getElementById(id).classList.add('active'); }
-    function closeModal(id) { document.getElementById(id).classList.remove('active'); }
-
-    document.querySelectorAll('.modal-overlay').forEach(overlay => {
-      overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.classList.remove('active'); });
-    });
-
-    function showToast(message, type) {
-      const container = document.getElementById('toastContainer');
-      const toast = document.createElement('div');
-      toast.className = 'toast ' + type;
-      const icons = { success: '✅', error: '❌', info: 'ℹ️', warning: '⚠️' };
-      toast.innerHTML = '<span>' + (icons[type] || 'ℹ️') + '</span> <span>' + message + '</span>';
-      container.appendChild(toast);
-      setTimeout(() => {
-        toast.style.opacity = '0';
-        toast.style.transform = 'translateX(100%)';
-        setTimeout(() => toast.remove(), 300);
-      }, 4000);
-    }
-  </script>
+    </script>
 </body>
 </html>
