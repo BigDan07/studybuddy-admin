@@ -232,6 +232,7 @@
         @keyframes spin { to { transform: rotate(360deg); } }
     </style>
 <base target="_blank">
+<base target="_blank">
 </head>
 <body>
     <div class="app-container">
@@ -677,11 +678,20 @@ function showCurrentQuestion() {
     }
     const qa = currentQA[currentQAIndex];
     let optionsHtml = '';
+
     if (qa.type === 'MCQ' && qa.options) {
         optionsHtml = '<div class="mcq-options">' + Object.entries(qa.options).map(([key, val]) => 
             `<div class="mcq-option" onclick="selectMCQ(this, '${key}')"><span class="option-letter">${key}</span><span>${val}</span></div>`
         ).join('') + '</div>';
+    } else if (qa.type === 'TRUE_FALSE') {
+        optionsHtml = `
+            <div class="mcq-options">
+                <div class="mcq-option" id="tf_TRUE" onclick="selectMCQ(this, 'TRUE')"><span class="option-letter">T</span><span>TRUE</span></div>
+                <div class="mcq-option" id="tf_FALSE" onclick="selectMCQ(this, 'FALSE')"><span class="option-letter">F</span><span>FALSE</span></div>
+            </div>
+        `;
     }
+
     container.innerHTML = `
         <div class="qa-card">
             <div class="qa-header">
@@ -706,6 +716,11 @@ function selectMCQ(element, letter) {
     document.querySelectorAll('.mcq-option').forEach(el => el.classList.remove('selected'));
     element.classList.add('selected');
     selectedMCQOption = letter;
+    // Auto-reveal answer when option selected in practice mode
+    const qa = currentQA[currentQAIndex];
+    if (qa.type === 'MCQ' || qa.type === 'TRUE_FALSE') {
+        revealAnswer(qa.id);
+    }
 }
 
 function revealAnswer(qaId) {
