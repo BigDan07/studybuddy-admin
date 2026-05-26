@@ -678,6 +678,7 @@ function showCurrentQuestion() {
     }
     const qa = currentQA[currentQAIndex];
     let optionsHtml = '';
+    let inputHtml = '';
 
     if (qa.type === 'MCQ' && qa.options) {
         optionsHtml = '<div class="mcq-options">' + Object.entries(qa.options).map(([key, val]) => 
@@ -690,6 +691,21 @@ function showCurrentQuestion() {
                 <div class="mcq-option" id="tf_FALSE" onclick="selectMCQ(this, 'FALSE')"><span class="option-letter">F</span><span>FALSE</span></div>
             </div>
         `;
+    } else if (qa.type === 'FILL_BLANK') {
+        inputHtml = `
+            <div class="answer-input-area">
+                <div class="input-label"><i class="fas fa-pen"></i> Type your answer:</div>
+                <input type="text" id="practiceAnswerInput" placeholder="Enter the missing word/phrase..." style="width: 100%; padding: 12px; background: var(--bg-input); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text-primary); font-size: 14px; font-family: inherit;">
+            </div>
+        `;
+    } else {
+        // SHORT_ANSWER, COMPARISON, LIST, EXPLANATION
+        inputHtml = `
+            <div class="answer-input-area">
+                <div class="input-label"><i class="fas fa-pen"></i> Type your answer:</div>
+                <textarea id="practiceAnswerInput" placeholder="Enter your answer here..." style="width: 100%; padding: 12px; background: var(--bg-input); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text-primary); font-size: 14px; font-family: inherit; resize: vertical; min-height: 80px;"></textarea>
+            </div>
+        `;
     }
 
     container.innerHTML = `
@@ -700,9 +716,13 @@ function showCurrentQuestion() {
             </div>
             <div class="qa-question">${qa.question}</div>
             ${optionsHtml}
+            ${inputHtml}
             <div class="qa-answer" id="qaAnswer_${qa.id}"><strong>Answer:</strong> ${qa.answer}</div>
+            <div class="answer-feedback" id="practiceFeedback"></div>
             <div style="display: flex; gap: 10px; margin-top: 14px;">
+                <button class="btn btn-secondary" onclick="prevQuestion()"><i class="fas fa-arrow-left"></i> Back</button>
                 <button class="btn btn-secondary" onclick="revealAnswer('${qa.id}')"><i class="fas fa-eye"></i> Reveal</button>
+                <button class="btn btn-primary" onclick="checkPracticeAnswer()"><i class="fas fa-check-circle"></i> Check Answer</button>
                 <button class="btn btn-success" onclick="markAnswer(true)"><i class="fas fa-check"></i> Got it</button>
                 <button class="btn btn-danger" onclick="markAnswer(false)"><i class="fas fa-times"></i> Practice</button>
                 <button class="btn btn-secondary" onclick="nextQuestion()" style="margin-left: auto;"><i class="fas fa-arrow-right"></i> Next</button>
@@ -716,11 +736,6 @@ function selectMCQ(element, letter) {
     document.querySelectorAll('.mcq-option').forEach(el => el.classList.remove('selected'));
     element.classList.add('selected');
     selectedMCQOption = letter;
-    // Auto-reveal answer when option selected in practice mode
-    const qa = currentQA[currentQAIndex];
-    if (qa.type === 'MCQ' || qa.type === 'TRUE_FALSE') {
-        revealAnswer(qa.id);
-    }
 }
 
 function revealAnswer(qaId) {
@@ -733,9 +748,84 @@ function markAnswer(correct) {
     nextQuestion();
 }
 
+function checkPracticeAnswer() {
+    const qa = currentQA[currentQAIndex];
+    const feedbackEl = document.getElementById('practiceFeedback');
+
+    if (qa.type === 'MCQ' || qa.type === 'TRUE_FALSE') {
+        if (!selectedMCQOption) {
+            showToast('Please select an answer first', 'error');
+            return;
+        }
+        const isCorrect = selectedMCQOption === qa.correct_answer;
+        if (feedbackEl) {
+            feedbackEl.className = 'answer-feedback ' + (isCorrect ? 'correct' : 'incorrect');
+            feedbackEl.innerHTML = isCorrect 
+                ? '<strong>Correct!</strong> Well done.' 
+                : `<strong>Incorrect.</strong> The correct answer is: <strong>${qa.correct_answer}</strong>`;
+            feedbackEl.style.display = 'block';
+        }
+        // Highlight options
+        document.querySelectorAll('.mcq-option').forEach(el => {
+            el.style.pointerEvents = 'none';
+        });
+        const correctEl = document.querySelector(`.mcq-option[onclick*="'${qa.correct_answer}'"]`);
+        if (correctEl) correctEl.classList.add('correct');
+        if (!isCorrect) {
+            const userEl = document.querySelector(`.mcq-option[onclick*="'${selectedMCQOption}'"]`);
+            if (userEl) userEl.classList.add('wrong');
+        }
+        revealAnswer(qa.id);
+    } else {
+        // FILL_BLANK, SHORT_ANSWER, COMPARISON, LIST
+        const input = document.getElementById('practiceAnswerInput');
+        if (!input || !input.value.trim()) {
+            showToast('Please type your answer first', 'error');
+            return;
+        }
+        const userAnswer = input.value.trim().toLowerCase();
+        const correctAnswer = qa.correct_answer || qa.answer || '';
+        const correctLower = correctAnswer.toLowerCase();
+
+        // Simple keyword matching for text answers
+        let isCorrect = false;
+        let score = 0;
+
+        if (qa.type === 'FILL_BLANK') {
+            isCorrect = userAnswer === correctLower;
+            score = isCorrect ? 100 : 0;
+        } else {
+            // For short answer/comparison/list - check keyword coverage
+            const keywords = qa.keywords || [];
+            const keywordHits = keywords.filter(kw => userAnswer.includes(kw.toLowerCase())).length;
+            const keywordScore = keywords.length > 0 ? (keywordHits / keywords.length) * 100 : 0;
+            // Also check if user's answer contains the correct answer or vice versa
+            const containsAnswer = userAnswer.includes(correctLower.substring(0, 20)) || correctLower.includes(userAnswer.substring(0, 20));
+            score = Math.max(keywordScore, containsAnswer ? 70 : 0);
+            isCorrect = score >= 60;
+        }
+
+        if (feedbackEl) {
+            feedbackEl.className = 'answer-feedback ' + (isCorrect ? 'correct' : 'partial');
+            feedbackEl.innerHTML = isCorrect 
+                ? '<strong>Correct!</strong> Well done.' 
+                : `<strong>Partial/Incorrect.</strong> Your answer: "${input.value.trim()}"<br><strong>Correct answer:</strong> ${correctAnswer}`;
+            feedbackEl.style.display = 'block';
+        }
+        revealAnswer(qa.id);
+    }
+}
+
 function nextQuestion() {
     if (currentQA.length > 0) {
         currentQAIndex = (currentQAIndex + 1) % currentQA.length;
+        showCurrentQuestion();
+    }
+}
+
+function prevQuestion() {
+    if (currentQA.length > 0) {
+        currentQAIndex = (currentQAIndex - 1 + currentQA.length) % currentQA.length;
         showCurrentQuestion();
     }
 }
