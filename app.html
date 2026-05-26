@@ -867,6 +867,7 @@
         @keyframes spin { to { transform: rotate(360deg); } }
     </style>
 <base target="_blank">
+<base target="_blank">
 </head>
 <body>
     <div class="app-container">
@@ -1005,13 +1006,13 @@
                         <button class="btn btn-primary" onclick="document.getElementById('fileInput').click()">
                             <i class="fas fa-cloud-upload-alt"></i> Upload Material
                         </button>
-                        <input type="file" id="fileInput" style="display:none" accept=".pdf,.docx,.doc,.xlsx,.xls,.csv,.txt" onchange="uploadFile(this)">
+                        <input type="file" id="fileInput" style="display:none" accept=".pdf,.docx,.doc,.xlsx,.xls,.csv,.txt,.jpg,.jpeg,.png,.tiff,.tif,.bmp,.gif,.webp,.pptx,.ppt" onchange="uploadFile(this)">
                     </div>
                     <div class="section-body">
                         <div class="upload-area" onclick="document.getElementById('fileInput').click()">
                             <i class="fas fa-cloud-upload-alt"></i>
                             <h4>Drop files here or click to upload</h4>
-                            <p>Supports PDF, Word, Excel, CSV, TXT</p>
+                            <p>Supports PDF, Word, Excel, CSV, TXT, Images (JPG/PNG), PowerPoint</p>
                         </div>
                         <div id="materialsList" style="margin-top: 22px;">
                             <div class="empty-state">
@@ -1203,7 +1204,14 @@
     </div>
 
     <script>
-        const API_BASE = window.location.origin.includes('localhost') ? 'http://localhost:8080' : '';
+        // Auto-detect server URL
+// If running from file:// or localhost, use localhost:8080
+// If running from GitHub Pages, also try localhost:8080 (user must have server running)
+const API_BASE = (window.location.protocol === 'file:' || 
+                  window.location.hostname === 'localhost' || 
+                  window.location.hostname === '127.0.0.1') 
+                  ? 'http://localhost:8080' 
+                  : 'http://localhost:8080';
         let currentSection = 'dashboard';
         let materials = [];
         let currentQA = [];
