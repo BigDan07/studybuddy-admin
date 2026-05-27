@@ -764,7 +764,7 @@ function checkPracticeAnswer() {
             feedbackEl.className = 'answer-feedback ' + (isCorrect ? 'correct' : 'incorrect');
             feedbackEl.innerHTML = isCorrect 
                 ? '<strong>Correct!</strong> Well done.' 
-                : `<strong>Incorrect.</strong> The correct answer is: <strong>${qa.correct_answer}</strong>`;
+                : `<strong>Incorrect.</strong> The correct answer is: <strong>${qa.correct_answer || qa.answer}</strong>`;
             feedbackEl.style.display = 'block';
         }
         // Highlight options
@@ -811,7 +811,7 @@ function checkPracticeAnswer() {
             feedbackEl.className = 'answer-feedback ' + (isCorrect ? 'correct' : 'partial');
             feedbackEl.innerHTML = isCorrect 
                 ? '<strong>Correct!</strong> Well done.' 
-                : `<strong>Partial/Incorrect.</strong> Your answer: "${input.value.trim()}"<br><strong>Correct answer:</strong> ${correctAnswer}`;
+                : `<strong>Partial/Incorrect.</strong> Your answer: "${input.value.trim()}"<br><strong>Correct answer:</strong> ${qa.correct_answer || qa.answer || correctAnswer}`;
             feedbackEl.style.display = 'block';
         }
         revealAnswer(qa.id);
