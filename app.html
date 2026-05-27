@@ -338,7 +338,8 @@
                         <h3><i class="fas fa-question-circle"></i> Q&A Practice</h3>
                         <div style="display: flex; gap: 10px; align-items: center;">
                             <select id="qaMaterialSelect" style="padding: 8px 14px; background: var(--bg-input); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text-primary); font-size: 14px;"><option value="">Select a material...</option></select>
-                            <button class="btn btn-primary btn-sm" onclick="generateQAFromSelect()"><i class="fas fa-magic"></i> Generate 100 Q&A</button>
+                            <input type="number" id="qaCountInput" value="100" min="10" max="500" style="padding: 8px 10px; width: 70px; background: var(--bg-input); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text-primary); font-size: 14px; text-align: center;" title="Number of questions">
+                            <button class="btn btn-primary btn-sm" onclick="generateQAFromSelect()"><i class="fas fa-magic"></i> Generate Q&A</button>
                         </div>
                     </div>
                     <div class="section-body"><div id="qaContainer"></div></div>
@@ -642,10 +643,10 @@ async function loadQAMaterials() {
     } catch (error) { console.error('QA materials error:', error); }
 }
 
-async function generateQA(materialId) {
+async function generateQA(materialId, numQuestions = 100) {
     try {
-        showToast('Generating 100 exam questions...', 'info');
-        const result = await apiPost(`/api/materials/${materialId}/qa`, { num_questions: 100 });
+        showToast(`Generating ${numQuestions} exam questions...`, 'info');
+        const result = await apiPost(`/api/materials/${materialId}/qa`, { num_questions: numQuestions });
         if (result.success) {
             showToast(`Generated ${result.qa_count} questions!`, 'success');
             showSection('qa', null);
@@ -657,8 +658,9 @@ async function generateQA(materialId) {
 
 async function generateQAFromSelect() {
     const materialId = document.getElementById('qaMaterialSelect').value;
+    const numQuestions = parseInt(document.getElementById('qaCountInput').value) || 100;
     if (!materialId) { showToast('Please select a material first', 'error'); return; }
-    generateQA(materialId);
+    generateQA(materialId, numQuestions);
 }
 
 async function loadQAForMaterial(materialId) {
