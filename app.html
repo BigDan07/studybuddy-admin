@@ -87,6 +87,7 @@
         .btn-warning { background: var(--warning); color: white; }
         .btn-sm { padding: 6px 14px; font-size: 12px; }
         .btn-lg { padding: 12px 24px; font-size: 15px; }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
         /* Forms */
         .form-group { margin-bottom: 18px; }
@@ -231,16 +232,13 @@
         .spinner { width: 22px; height: 22px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 1s linear infinite; }
         @keyframes spin { to { transform: rotate(360deg); } }
     </style>
-<base target="_blank">
-<base target="_blank">
-<base target="_blank">
 </head>
 <body>
     <div class="app-container">
         <aside class="sidebar">
             <div class="sidebar-brand">
                 <h1><i class="fas fa-graduation-cap"></i> StudyBuddy</h1>
-                <div class="version">v3.2.0 &bull; Local Server</div>
+                <div class="version">v3.3.0 &bull; Local Server</div>
             </div>
             <div class="nav-section">
                 <div class="nav-section-title">Overview</div>
@@ -345,8 +343,8 @@
                         </div>
                     </div>
                     <div class="section-body">
-                        <div id="qaPagination" style="display: none; margin-bottom: 16px; padding: 10px; background: var(--bg-tertiary); border-radius: var(--radius); justify-content: space-between; align-items: center;">
-                            <span id="qaPageInfo" style="font-size: 13px; color: var(--text-secondary);">Questions 1-10 of 100</span>
+                        <div id="qaPagination" style="display: none; margin-bottom: 16px; padding: 14px; background: var(--bg-tertiary); border-radius: var(--radius); justify-content: space-between; align-items: center;">
+                            <span id="qaPageInfo" style="font-size: 13px; color: var(--text-secondary); font-weight: 600;">Questions 1-10 of 100</span>
                             <div style="display: flex; gap: 8px;">
                                 <button class="btn btn-sm btn-secondary" id="qaPrevBtn" onclick="prevQAPage()"><i class="fas fa-arrow-left"></i> Previous 10</button>
                                 <button class="btn btn-sm btn-secondary" id="qaNextBtn" onclick="nextQAPage()">Next 10 <i class="fas fa-arrow-right"></i></button>
@@ -448,7 +446,7 @@
                             <button class="btn btn-danger" onclick="clearAllData()"><i class="fas fa-trash-alt"></i> Clear All</button>
                         </div>
                         <hr style="border: none; border-top: 1px solid var(--border); margin: 28px 0;">
-                        <p style="color: var(--text-muted); font-size: 13px;"><strong>StudyBuddy</strong> v3.2.0<br>True Content-Aware Q&A Generator + Test Scoring<br><i class="fas fa-brain"></i> 100 questions for 100% exam coverage.</p>
+                        <p style="color: var(--text-muted); font-size: 13px;"><strong>StudyBuddy</strong> v3.3.0<br>True Content-Aware Q&A Generator + Test Scoring<br><i class="fas fa-brain"></i> 100 questions for 100% exam coverage.</p>
                     </div>
                 </div>
             </div>
@@ -504,23 +502,24 @@ const API_BASE = 'http://localhost:8080';
 let currentSection = 'dashboard';
 let materials = [];
 let currentQA = [];
-let currentQAIndex = 0;
 let currentQAPage = 0;
 const QA_PER_PAGE = 10;
 let currentQAMaterialId = null;
 let testSessionId = null;
 let testQuestions = [];
-let currentTestIndex = 0;
-let testAnswers = [];
-let testStartTime = null;
-let selectedMCQOption = null;
 let currentTestPage = 0;
+let selectedTestOptions = {};
+let testStartTime = null;
 let testTimerInterval = null;
 let testTimeLimit = 0;
-let selectedTestOptions = {};
 let currentTestMaterialId = null;
 let currentAOCMaterialId = null;
 let currentTheoryMaterialId = null;
+
+// Cache buster for API calls to prevent stale data
+function cacheBuster() {
+    return '?_t=' + Date.now();
+}
 
 document.addEventListener('DOMContentLoaded', () => {
     checkServerConnection();
@@ -587,7 +586,7 @@ function showSection(section, el) {
 }
 
 async function apiGet(endpoint) {
-    const response = await fetch(`${API_BASE}${endpoint}`);
+    const response = await fetch(`${API_BASE}${endpoint}${cacheBuster()}`);
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     return response.json();
 }
@@ -682,23 +681,39 @@ async function loadMaterials() {
     } catch (error) { console.error('Materials error:', error); }
 }
 
-// ============ Q&A PRACTICE ============
+// ============ Q&A PRACTICE - FIXED ============
 async function loadQAMaterials() {
     const select = document.getElementById('qaMaterialSelect');
     select.innerHTML = '<option value="">Select a material...</option>';
     try {
         const mats = await apiGet('/api/materials');
-        mats.forEach(m => { const option = document.createElement('option'); option.value = m.id; option.textContent = m.filename; select.appendChild(option); });
+        mats.forEach(m => { 
+            const option = document.createElement('option'); 
+            option.value = m.id; 
+            option.textContent = m.filename; 
+            select.appendChild(option); 
+        });
+
+        // FIXED: Properly clear state when material changes
         select.onchange = (e) => { 
-        if (e.target.value) {
-            currentQAMaterialId = e.target.value;
-            currentQA = [];
-            currentQAIndex = 0;
-            currentQAPage = 0;
-            selectedMCQOption = null;
-            loadQAForMaterial(e.target.value); 
-        }
-    };
+            const newMaterialId = e.target.value;
+            if (newMaterialId) {
+                // Clear previous state completely
+                currentQA = [];
+                currentQAPage = 0;
+                currentQAMaterialId = newMaterialId;
+                // Clear container immediately
+                document.getElementById('qaContainer').innerHTML = '<div style="text-align:center;padding:30px;color:var(--text-muted)"><div class="spinner" style="margin:0 auto 15px"></div>Loading questions...</div>';
+                loadQAForMaterial(newMaterialId); 
+            } else {
+                // Clear everything when no material selected
+                currentQA = [];
+                currentQAPage = 0;
+                currentQAMaterialId = null;
+                document.getElementById('qaContainer').innerHTML = '';
+                document.getElementById('qaPagination').style.display = 'none';
+            }
+        };
     } catch (error) { console.error('QA materials error:', error); }
 }
 
@@ -710,9 +725,7 @@ async function generateQA(materialId, numQuestions = 100) {
             showToast(`Generated ${result.qa_count} questions!`, 'success');
             currentQAMaterialId = materialId;
             currentQA = [];
-            currentQAIndex = 0;
             currentQAPage = 0;
-            selectedMCQOption = null;
             showSection('qa', null);
             document.getElementById('qaMaterialSelect').value = materialId;
             loadQAForMaterial(materialId);
@@ -729,43 +742,74 @@ async function generateQAFromSelect() {
 
 async function loadQAForMaterial(materialId) {
     try {
+        // Show loading state
+        document.getElementById('qaContainer').innerHTML = '<div style="text-align:center;padding:30px;color:var(--text-muted)"><div class="spinner" style="margin:0 auto 15px"></div>Loading questions...</div>';
+
         const qaList = await apiGet(`/api/materials/${materialId}/qa`);
-        currentQA = qaList;
-        currentQAIndex = 0;
+
+        // FIXED: Always set currentQA to the newly loaded data
+        currentQA = qaList || [];
         currentQAPage = 0;
         currentQAMaterialId = materialId;
+
+        if (currentQA.length === 0) {
+            document.getElementById('qaContainer').innerHTML = `
+                <div class="empty-state">
+                    <i class="fas fa-brain"></i>
+                    <h4>No Q&A generated yet</h4>
+                    <p>This material does not have any questions yet.</p>
+                    <button class="btn btn-primary" onclick="generateQAFromSelect()" style="margin-top:14px">
+                        <i class="fas fa-magic"></i> Generate Q&A Now
+                    </button>
+                </div>
+            `;
+            document.getElementById('qaPagination').style.display = 'none';
+            return;
+        }
+
         showCurrentQuestion();
-    } catch (error) { console.error('Load QA error:', error); }
+    } catch (error) { 
+        console.error('Load QA error:', error); 
+        document.getElementById('qaContainer').innerHTML = `<div class="empty-state"><i class="fas fa-exclamation-circle"></i><h4>Error loading questions</h4><p>${error.message}</p></div>`;
+    }
 }
 
+// ============ FIXED PAGINATION - Shows exactly 10 questions per page ============
 function showCurrentQuestion() {
     const container = document.getElementById('qaContainer');
     const paginationDiv = document.getElementById('qaPagination');
 
-    if (currentQA.length === 0) {
-        container.innerHTML = `<div class="empty-state"><i class="fas fa-brain"></i><h4>No Q&A generated yet</h4><button class="btn btn-primary" onclick="generateQAFromSelect()"><i class="fas fa-magic"></i> Generate Q&A</button></div>`;
+    if (!currentQA || currentQA.length === 0) {
+        container.innerHTML = `<div class="empty-state"><i class="fas fa-brain"></i><h4>No Q&A available</h4><p>Select a material and generate Q&A first</p></div>`;
         if (paginationDiv) paginationDiv.style.display = 'none';
         return;
     }
 
-    // Show pagination
+    // Show pagination controls
     if (paginationDiv) paginationDiv.style.display = 'flex';
+
     const pageInfo = document.getElementById('qaPageInfo');
+    const totalPages = Math.ceil(currentQA.length / QA_PER_PAGE);
+    const startIdx = currentQAPage * QA_PER_PAGE;
+    const endIdx = Math.min(startIdx + QA_PER_PAGE, currentQA.length);
+
     if (pageInfo) {
-        const startIdx = currentQAPage * QA_PER_PAGE;
-        const endIdx = Math.min(startIdx + QA_PER_PAGE, currentQA.length);
-        pageInfo.textContent = `Questions ${startIdx + 1}-${endIdx} of ${currentQA.length}`;
+        pageInfo.innerHTML = `<strong>Questions ${startIdx + 1}-${endIdx}</strong> of ${currentQA.length} <span style="color:var(--text-muted)">(Page ${currentQAPage + 1} of ${totalPages})</span>`;
     }
 
     // Update pagination buttons
     const prevBtn = document.getElementById('qaPrevBtn');
     const nextBtn = document.getElementById('qaNextBtn');
-    if (prevBtn) prevBtn.disabled = currentQAPage === 0;
-    if (nextBtn) nextBtn.disabled = (currentQAPage + 1) * QA_PER_PAGE >= currentQA.length;
+    if (prevBtn) {
+        prevBtn.disabled = currentQAPage === 0;
+        prevBtn.style.opacity = currentQAPage === 0 ? '0.5' : '1';
+    }
+    if (nextBtn) {
+        nextBtn.disabled = (currentQAPage + 1) >= totalPages;
+        nextBtn.style.opacity = (currentQAPage + 1) >= totalPages ? '0.5' : '1';
+    }
 
-    // Show 10 questions at a time
-    const startIdx = currentQAPage * QA_PER_PAGE;
-    const endIdx = Math.min(startIdx + QA_PER_PAGE, currentQA.length);
+    // Get exactly 10 questions for this page
     const pageQuestions = currentQA.slice(startIdx, endIdx);
 
     let questionsHtml = '';
@@ -774,10 +818,12 @@ function showCurrentQuestion() {
         let optionsHtml = '';
         let inputHtml = '';
 
-        if (qa.type === 'MCQ' && qa.options) {
-            optionsHtml = '<div class="mcq-options" style="margin-top: 10px;">' + Object.entries(qa.options).map(([key, val]) => 
-                `<div class="mcq-option" id="qa_mcq_${globalIdx}_${key}" onclick="selectPracticeMCQ(${globalIdx}, '${key}')"><span class="option-letter">${key}</span><span>${val}</span></div>`
-            ).join('') + '</div>';
+        if (qa.type === 'MCQ' && qa.options && Object.keys(qa.options).length > 0) {
+            optionsHtml = '<div class="mcq-options" style="margin-top: 10px;">' + 
+                Object.entries(qa.options).map(([key, val]) => 
+                    `<div class="mcq-option" id="qa_mcq_${globalIdx}_${key}" onclick="selectPracticeMCQ(${globalIdx}, '${key}')"><span class="option-letter">${key}</span><span>${val}</span></div>`
+                ).join('') + 
+            '</div>';
         } else if (qa.type === 'TRUE_FALSE') {
             optionsHtml = `
                 <div class="mcq-options" style="margin-top: 10px;">
@@ -813,7 +859,7 @@ function showCurrentQuestion() {
                 ${inputHtml}
                 <div class="qa-answer" id="qaAnswer_${qa.id}" style="display: none;"><strong>Answer:</strong> ${qa.answer}</div>
                 <div class="answer-feedback" id="practiceFeedback_${globalIdx}" style="display: none;"></div>
-                <div style="display: flex; gap: 10px; margin-top: 14px;">
+                <div style="display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap;">
                     <button class="btn btn-secondary btn-sm" onclick="revealAnswer('${qa.id}')"><i class="fas fa-eye"></i> Reveal</button>
                     <button class="btn btn-primary btn-sm" onclick="checkPracticeAnswerAtIndex(${globalIdx})"><i class="fas fa-check-circle"></i> Check Answer</button>
                     <button class="btn btn-success btn-sm" onclick="markAnswerAtIndex(${globalIdx}, true)"><i class="fas fa-check"></i> Got it</button>
@@ -827,8 +873,9 @@ function showCurrentQuestion() {
 }
 
 function selectPracticeMCQ(questionIdx, key) {
-    const qa = currentQA[questionIdx];
+    // Clear all selections for this question
     document.querySelectorAll(`[id^="qa_mcq_${questionIdx}_"], [id^="qa_tf_${questionIdx}_"]`).forEach(el => el.classList.remove('selected'));
+    // Add selected to clicked
     const el = document.getElementById(`qa_mcq_${questionIdx}_${key}`) || document.getElementById(`qa_tf_${questionIdx}_${key}`);
     if (el) el.classList.add('selected');
 }
@@ -837,23 +884,35 @@ function prevQAPage() {
     if (currentQAPage > 0) {
         currentQAPage--;
         showCurrentQuestion();
+        // Scroll to top of container
+        document.getElementById('qaContainer').scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 }
 
 function nextQAPage() {
-    if ((currentQAPage + 1) * QA_PER_PAGE < currentQA.length) {
+    const totalPages = Math.ceil(currentQA.length / QA_PER_PAGE);
+    if ((currentQAPage + 1) < totalPages) {
         currentQAPage++;
         showCurrentQuestion();
+        // Scroll to top of container
+        document.getElementById('qaContainer').scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 }
 
 function checkPracticeAnswerAtIndex(idx) {
     const qa = currentQA[idx];
+    if (!qa) return;
+
     const feedbackEl = document.getElementById(`practiceFeedback_${idx}`);
 
     if (qa.type === 'MCQ' || qa.type === 'TRUE_FALSE') {
-        const selectedEl = document.querySelector(`#qa_mcq_${idx}.selected, #qa_tf_${idx}.selected`);
-        const selectedOption = selectedEl ? selectedEl.id.split('_').pop() : null;
+        // Find selected option by looking for .selected class
+        let selectedOption = null;
+        const selectedEl = document.querySelector(`[id^="qa_mcq_${idx}_"].selected, [id^="qa_tf_${idx}_"].selected`);
+        if (selectedEl) {
+            const parts = selectedEl.id.split('_');
+            selectedOption = parts[parts.length - 1];
+        }
 
         if (!selectedOption) {
             showToast('Please select an answer first', 'error');
@@ -864,16 +923,21 @@ function checkPracticeAnswerAtIndex(idx) {
         if (feedbackEl) {
             feedbackEl.className = 'answer-feedback ' + (isCorrect ? 'correct' : 'incorrect');
             feedbackEl.innerHTML = isCorrect 
-                ? '<strong>Correct!</strong> Well done.' 
-                : `<strong>Incorrect.</strong> The correct answer is: <strong>${qa.correct_answer}</strong>`;
+                ? '<strong><i class="fas fa-check-circle"></i> Correct!</strong> Well done.' 
+                : `<strong><i class="fas fa-times-circle"></i> Incorrect.</strong> The correct answer is: <strong>${qa.correct_answer}</strong>`;
             feedbackEl.style.display = 'block';
         }
 
+        // Disable all options for this question
         document.querySelectorAll(`[id^="qa_mcq_${idx}_"], [id^="qa_tf_${idx}_"]`).forEach(el => {
             el.style.pointerEvents = 'none';
         });
+
+        // Highlight correct answer
         const correctEl = document.getElementById(`qa_mcq_${idx}_${qa.correct_answer}`) || document.getElementById(`qa_tf_${idx}_${qa.correct_answer}`);
         if (correctEl) correctEl.classList.add('correct');
+
+        // Highlight wrong if incorrect
         if (!isCorrect) {
             const userEl = document.getElementById(`qa_mcq_${idx}_${selectedOption}`) || document.getElementById(`qa_tf_${idx}_${selectedOption}`);
             if (userEl) userEl.classList.add('wrong');
@@ -906,8 +970,8 @@ function checkPracticeAnswerAtIndex(idx) {
         if (feedbackEl) {
             feedbackEl.className = 'answer-feedback ' + (isCorrect ? 'correct' : 'partial');
             feedbackEl.innerHTML = isCorrect 
-                ? '<strong>Correct!</strong> Well done.' 
-                : `<strong>Partial/Incorrect.</strong> Your answer: "${input.value.trim()}"<br><strong>Correct answer:</strong> ${qa.correct_answer || qa.answer || correctAnswer}`;
+                ? '<strong><i class="fas fa-check-circle"></i> Correct!</strong> Well done.' 
+                : `<strong><i class="fas fa-times-circle"></i> Partial/Incorrect.</strong> Your answer: "${input.value.trim()}"<br><strong>Correct answer:</strong> ${qa.correct_answer || qa.answer || correctAnswer}`;
             feedbackEl.style.display = 'block';
         }
     }
@@ -916,54 +980,28 @@ function checkPracticeAnswerAtIndex(idx) {
 }
 
 function markAnswerAtIndex(idx, correct) {
-    showToast(correct ? 'Great job!' : 'Keep practicing!', correct ? 'success' : 'info');
-}
+    showToast(correct ? 'Great job! Moving to next...' : 'Keep practicing!', correct ? 'success' : 'info');
+    // Auto-advance to next question after a delay
+    if (correct) {
+        setTimeout(() => {
+            const totalPages = Math.ceil(currentQA.length / QA_PER_PAGE);
+            const currentPageEnd = (currentQAPage + 1) * QA_PER_PAGE;
 
-function selectMCQ(element, letter) {
-    document.querySelectorAll('.mcq-option').forEach(el => el.classList.remove('selected'));
-    element.classList.add('selected');
-    selectedMCQOption = letter;
-    console.log('Selected:', letter);
+            if (idx + 1 < currentPageEnd && idx + 1 < currentQA.length) {
+                // Next question is on same page, scroll to it
+                const nextCard = document.getElementById('qaContainer').children[idx - (currentQAPage * QA_PER_PAGE) + 1];
+                if (nextCard) nextCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            } else if (currentQAPage + 1 < totalPages) {
+                // Go to next page
+                nextQAPage();
+            }
+        }, 1000);
+    }
 }
 
 function revealAnswer(qaId) {
     const el = document.getElementById(`qaAnswer_${qaId}`);
     if (el) el.classList.add('revealed');
-}
-
-function markAnswer(correct) {
-    showToast(correct ? 'Great job!' : 'Keep practicing!', correct ? 'success' : 'info');
-}
-
-function markAnswerAtIndex(idx, correct) {
-    showToast(correct ? 'Great job!' : 'Keep practicing!', correct ? 'success' : 'info');
-}
-
-function checkPracticeAnswer() {
-    // Delegate to paginated version for current question index
-    checkPracticeAnswerAtIndex(currentQAIndex);
-}
-
-function nextQuestion() {
-    if (currentQA.length > 0) {
-        currentQAIndex = (currentQAIndex + 1) % currentQA.length;
-        const newPage = Math.floor(currentQAIndex / QA_PER_PAGE);
-        if (newPage !== currentQAPage) {
-            currentQAPage = newPage;
-        }
-        showCurrentQuestion();
-    }
-}
-
-function prevQuestion() {
-    if (currentQA.length > 0) {
-        currentQAIndex = (currentQAIndex - 1 + currentQA.length) % currentQA.length;
-        const newPage = Math.floor(currentQAIndex / QA_PER_PAGE);
-        if (newPage !== currentQAPage) {
-            currentQAPage = newPage;
-        }
-        showCurrentQuestion();
-    }
 }
 
 // ============ TEST MODE ============
@@ -1011,7 +1049,6 @@ async function startTest() {
             testSessionId = result.test_session_id;
             testQuestions = await apiGet(`/api/materials/${materialId}/qa`);
             currentTestPage = 0;
-            testAnswers = [];
             selectedTestOptions = {};
             testStartTime = Date.now();
             showToast(`Test started! ${result.total_questions} questions. Good luck!`, 'success');
@@ -1126,8 +1163,8 @@ function showTestPage() {
             <div class="test-progress-bar"><div class="progress-fill" style="width: ${progress}%"></div></div>
         </div>
         ${questionsHtml}
-        <div style="display: flex; gap: 10px; margin-top: 20px; align-items: center;">
-            <button class="btn btn-secondary" onclick="prevTestPage()" ${currentTestPage === 0 ? 'disabled style="opacity: 0.5;"' : ''}><i class="fas fa-arrow-left"></i> Previous 10</button>
+        <div style="display: flex; gap: 10px; margin-top: 20px; align-items: center; flex-wrap: wrap;">
+            <button class="btn btn-secondary" onclick="prevTestPage()" ${currentTestPage === 0 ? 'disabled' : ''}><i class="fas fa-arrow-left"></i> Previous 10</button>
             <button class="btn btn-primary" onclick="submitAllTestAnswers()"><i class="fas fa-paper-plane"></i> Submit All Answers</button>
             <button class="btn btn-success" onclick="submitAndNextPage()"><i class="fas fa-check-double"></i> Submit & Next 10</button>
             ${currentTestPage < totalPages - 1 ? `<button class="btn btn-secondary" onclick="nextTestPage()">Next 10 <i class="fas fa-arrow-right"></i></button>` : ''}
@@ -1295,7 +1332,6 @@ async function submitAndNextPage() {
 
 function endTestEarly() {
     if (!confirm('Are you sure you want to end the test? All answered questions will be submitted.')) return;
-    // Hide End Test button in top bar
     const endTestBtn = document.getElementById('endTestTopBtn');
     if (endTestBtn) endTestBtn.style.display = 'none';
     submitAllTestAnswers();
@@ -1381,10 +1417,6 @@ async function loadAOCForMaterial(materialId) {
             </div>
         `).join('');
     } catch (error) { console.error('AOC error:', error); }
-}
-
-function toggleAOC(element) {
-    // AOC now shows all content fully without hiding
 }
 
 // ============ THEORY MODE ============
@@ -1494,8 +1526,8 @@ async function checkTheoryAnswer(qaId) {
         if (feedbackEl) {
             feedbackEl.className = 'answer-feedback ' + (isCorrect ? 'correct' : 'partial');
             feedbackEl.innerHTML = isCorrect 
-                ? `<strong>Good answer!</strong> Score: ${score.toFixed(0)}%. You covered the key points. Click "Reveal Answer" to see the model answer for comparison.` 
-                : `<strong>Keep working on it.</strong> Score: ${score.toFixed(0)}%. You missed some key points. Click "Reveal Answer" to see what you should include.<br><strong>Key points:</strong> ${keywords.join(', ')}`;
+                ? `<strong><i class="fas fa-check-circle"></i> Good answer!</strong> Score: ${score.toFixed(0)}%. You covered the key points. Click "Reveal Answer" to see the model answer for comparison.` 
+                : `<strong><i class="fas fa-times-circle"></i> Keep working on it.</strong> Score: ${score.toFixed(0)}%. You missed some key points. Click "Reveal Answer" to see what you should include.<br><strong>Key points:</strong> ${keywords.join(', ')}`;
             feedbackEl.style.display = 'block';
         }
     } catch (error) {
@@ -1560,7 +1592,7 @@ async function completeGoal(goalId) {
 
 async function loadQuote() {
     try {
-        const quote = await apiGet('/api/quote?mood=encouragement');
+        const quote = await apiGet('/api/quote');
         document.getElementById('quoteText').textContent = quote.text;
         document.getElementById('quoteAuthor').textContent = '— ' + quote.author;
     } catch (error) {
