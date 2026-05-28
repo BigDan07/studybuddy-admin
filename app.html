@@ -344,7 +344,16 @@
                             <button class="btn btn-primary btn-sm" onclick="generateQAFromSelect()"><i class="fas fa-magic"></i> Generate Q&A</button>
                         </div>
                     </div>
-                    <div class="section-body"><div id="qaContainer"></div></div>
+                    <div class="section-body">
+                        <div id="qaPagination" style="display: none; margin-bottom: 16px; padding: 10px; background: var(--bg-tertiary); border-radius: var(--radius); justify-content: space-between; align-items: center;">
+                            <span id="qaPageInfo" style="font-size: 13px; color: var(--text-secondary);">Questions 1-10 of 100</span>
+                            <div style="display: flex; gap: 8px;">
+                                <button class="btn btn-sm btn-secondary" id="qaPrevBtn" onclick="prevQAPage()"><i class="fas fa-arrow-left"></i> Previous 10</button>
+                                <button class="btn btn-sm btn-secondary" id="qaNextBtn" onclick="nextQAPage()">Next 10 <i class="fas fa-arrow-right"></i></button>
+                            </div>
+                        </div>
+                        <div id="qaContainer"></div>
+                    </div>
                 </div>
             </div>
 
@@ -355,15 +364,20 @@
                         <h3><i class="fas fa-vial"></i> Test Mode</h3>
                         <div style="display: flex; gap: 10px; align-items: center;">
                             <select id="testMaterialSelect" style="padding: 8px 14px; background: var(--bg-input); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text-primary); font-size: 14px;"><option value="">Select a material...</option></select>
-                            <select id="testTimerSelect" style="padding: 8px 14px; background: var(--bg-input); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text-primary); font-size: 14px; width: 140px;">
+                            <select id="testTimerSelect" style="padding: 8px 14px; background: var(--bg-input); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text-primary); font-size: 14px; width: 160px;">
                                 <option value="0">No Timer</option>
-                                <option value="300">5 Minutes</option>
                                 <option value="600">10 Minutes</option>
                                 <option value="900">15 Minutes</option>
+                                <option value="1200">20 Minutes</option>
                                 <option value="1800">30 Minutes</option>
+                                <option value="2400">40 Minutes</option>
                                 <option value="3600">1 Hour</option>
+                                <option value="5400">1.5 Hours</option>
+                                <option value="7200">2 Hours</option>
+                                <option value="10800">3 Hours</option>
                             </select>
                             <button class="btn btn-primary btn-sm" onclick="startTest()"><i class="fas fa-play"></i> Start Test</button>
+                            <button class="btn btn-warning btn-sm" id="endTestTopBtn" onclick="endTestEarly()" style="display: none;"><i class="fas fa-stop"></i> End Test</button>
                         </div>
                     </div>
                     <div class="section-body"><div id="testContainer"></div></div>
@@ -491,6 +505,9 @@ let currentSection = 'dashboard';
 let materials = [];
 let currentQA = [];
 let currentQAIndex = 0;
+let currentQAPage = 0;
+const QA_PER_PAGE = 10;
+let currentQAMaterialId = null;
 let testSessionId = null;
 let testQuestions = [];
 let currentTestIndex = 0;
@@ -501,6 +518,9 @@ let currentTestPage = 0;
 let testTimerInterval = null;
 let testTimeLimit = 0;
 let selectedTestOptions = {};
+let currentTestMaterialId = null;
+let currentAOCMaterialId = null;
+let currentTheoryMaterialId = null;
 
 document.addEventListener('DOMContentLoaded', () => {
     checkServerConnection();
@@ -669,7 +689,16 @@ async function loadQAMaterials() {
     try {
         const mats = await apiGet('/api/materials');
         mats.forEach(m => { const option = document.createElement('option'); option.value = m.id; option.textContent = m.filename; select.appendChild(option); });
-        select.onchange = (e) => { if (e.target.value) loadQAForMaterial(e.target.value); };
+        select.onchange = (e) => { 
+        if (e.target.value) {
+            currentQAMaterialId = e.target.value;
+            currentQA = [];
+            currentQAIndex = 0;
+            currentQAPage = 0;
+            selectedMCQOption = null;
+            loadQAForMaterial(e.target.value); 
+        }
+    };
     } catch (error) { console.error('QA materials error:', error); }
 }
 
@@ -679,6 +708,11 @@ async function generateQA(materialId, numQuestions = 100) {
         const result = await apiPost(`/api/materials/${materialId}/qa`, { num_questions: numQuestions });
         if (result.success) {
             showToast(`Generated ${result.qa_count} questions!`, 'success');
+            currentQAMaterialId = materialId;
+            currentQA = [];
+            currentQAIndex = 0;
+            currentQAPage = 0;
+            selectedMCQOption = null;
             showSection('qa', null);
             document.getElementById('qaMaterialSelect').value = materialId;
             loadQAForMaterial(materialId);
@@ -698,70 +732,191 @@ async function loadQAForMaterial(materialId) {
         const qaList = await apiGet(`/api/materials/${materialId}/qa`);
         currentQA = qaList;
         currentQAIndex = 0;
+        currentQAPage = 0;
+        currentQAMaterialId = materialId;
         showCurrentQuestion();
     } catch (error) { console.error('Load QA error:', error); }
 }
 
 function showCurrentQuestion() {
     const container = document.getElementById('qaContainer');
+    const paginationDiv = document.getElementById('qaPagination');
+
     if (currentQA.length === 0) {
         container.innerHTML = `<div class="empty-state"><i class="fas fa-brain"></i><h4>No Q&A generated yet</h4><button class="btn btn-primary" onclick="generateQAFromSelect()"><i class="fas fa-magic"></i> Generate Q&A</button></div>`;
+        if (paginationDiv) paginationDiv.style.display = 'none';
         return;
     }
-    const qa = currentQA[currentQAIndex];
-    let optionsHtml = '';
-    let inputHtml = '';
 
-    if (qa.type === 'MCQ' && qa.options) {
-        optionsHtml = '<div class="mcq-options">' + Object.entries(qa.options).map(([key, val]) => 
-            `<div class="mcq-option" onclick="selectMCQ(this, '${key}')"><span class="option-letter">${key}</span><span>${val}</span></div>`
-        ).join('') + '</div>';
-    } else if (qa.type === 'TRUE_FALSE') {
-        optionsHtml = `
-            <div class="mcq-options">
-                <div class="mcq-option" id="tf_TRUE" onclick="selectMCQ(this, 'TRUE')"><span class="option-letter">T</span><span>TRUE</span></div>
-                <div class="mcq-option" id="tf_FALSE" onclick="selectMCQ(this, 'FALSE')"><span class="option-letter">F</span><span>FALSE</span></div>
-            </div>
-        `;
-    } else if (qa.type === 'FILL_BLANK') {
-        inputHtml = `
-            <div class="answer-input-area">
-                <div class="input-label"><i class="fas fa-pen"></i> Type your answer:</div>
-                <input type="text" id="practiceAnswerInput" placeholder="Enter the missing word/phrase..." style="width: 100%; padding: 12px; background: var(--bg-input); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text-primary); font-size: 14px; font-family: inherit;">
-            </div>
-        `;
-    } else {
-        // SHORT_ANSWER, COMPARISON, LIST, EXPLANATION
-        inputHtml = `
-            <div class="answer-input-area">
-                <div class="input-label"><i class="fas fa-pen"></i> Type your answer:</div>
-                <textarea id="practiceAnswerInput" placeholder="Enter your answer here..." style="width: 100%; padding: 12px; background: var(--bg-input); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text-primary); font-size: 14px; font-family: inherit; resize: vertical; min-height: 80px;"></textarea>
-            </div>
-        `;
+    // Show pagination
+    if (paginationDiv) paginationDiv.style.display = 'flex';
+    const pageInfo = document.getElementById('qaPageInfo');
+    if (pageInfo) {
+        const startIdx = currentQAPage * QA_PER_PAGE;
+        const endIdx = Math.min(startIdx + QA_PER_PAGE, currentQA.length);
+        pageInfo.textContent = `Questions ${startIdx + 1}-${endIdx} of ${currentQA.length}`;
     }
 
-    container.innerHTML = `
-        <div class="qa-card">
-            <div class="qa-header">
-                <span class="qa-type">${qa.type}</span>
-                <span class="badge badge-${qa.difficulty === 'easy' ? 'success' : qa.difficulty === 'hard' ? 'danger' : 'warning'}">${qa.difficulty}</span>
+    // Update pagination buttons
+    const prevBtn = document.getElementById('qaPrevBtn');
+    const nextBtn = document.getElementById('qaNextBtn');
+    if (prevBtn) prevBtn.disabled = currentQAPage === 0;
+    if (nextBtn) nextBtn.disabled = (currentQAPage + 1) * QA_PER_PAGE >= currentQA.length;
+
+    // Show 10 questions at a time
+    const startIdx = currentQAPage * QA_PER_PAGE;
+    const endIdx = Math.min(startIdx + QA_PER_PAGE, currentQA.length);
+    const pageQuestions = currentQA.slice(startIdx, endIdx);
+
+    let questionsHtml = '';
+    pageQuestions.forEach((qa, idx) => {
+        const globalIdx = startIdx + idx;
+        let optionsHtml = '';
+        let inputHtml = '';
+
+        if (qa.type === 'MCQ' && qa.options) {
+            optionsHtml = '<div class="mcq-options" style="margin-top: 10px;">' + Object.entries(qa.options).map(([key, val]) => 
+                `<div class="mcq-option" id="qa_mcq_${globalIdx}_${key}" onclick="selectPracticeMCQ(${globalIdx}, '${key}')"><span class="option-letter">${key}</span><span>${val}</span></div>`
+            ).join('') + '</div>';
+        } else if (qa.type === 'TRUE_FALSE') {
+            optionsHtml = `
+                <div class="mcq-options" style="margin-top: 10px;">
+                    <div class="mcq-option" id="qa_tf_${globalIdx}_TRUE" onclick="selectPracticeMCQ(${globalIdx}, 'TRUE')"><span class="option-letter">T</span><span>TRUE</span></div>
+                    <div class="mcq-option" id="qa_tf_${globalIdx}_FALSE" onclick="selectPracticeMCQ(${globalIdx}, 'FALSE')"><span class="option-letter">F</span><span>FALSE</span></div>
+                </div>
+            `;
+        } else if (qa.type === 'FILL_BLANK') {
+            inputHtml = `
+                <div class="answer-input-area" style="margin-top: 10px;">
+                    <div class="input-label"><i class="fas fa-pen"></i> Type your answer:</div>
+                    <input type="text" id="practiceAnswerInput_${globalIdx}" placeholder="Enter the missing word/phrase..." style="width: 100%; padding: 12px; background: var(--bg-input); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text-primary); font-size: 14px; font-family: inherit;">
+                </div>
+            `;
+        } else {
+            inputHtml = `
+                <div class="answer-input-area" style="margin-top: 10px;">
+                    <div class="input-label"><i class="fas fa-pen"></i> Type your answer:</div>
+                    <textarea id="practiceAnswerInput_${globalIdx}" placeholder="Enter your answer here..." style="width: 100%; padding: 12px; background: var(--bg-input); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text-primary); font-size: 14px; font-family: inherit; resize: vertical; min-height: 80px;"></textarea>
+                </div>
+            `;
+        }
+
+        questionsHtml += `
+            <div class="qa-card" style="margin-bottom: 16px;">
+                <div class="qa-header">
+                    <span class="qa-type">${qa.type}</span>
+                    <span class="badge badge-${qa.difficulty === 'easy' ? 'success' : qa.difficulty === 'hard' ? 'danger' : 'warning'}">${qa.difficulty}</span>
+                    <span style="margin-left: auto; color: var(--text-muted); font-size: 12px;">Q${globalIdx + 1}</span>
+                </div>
+                <div class="qa-question" style="font-size: 15px;">${qa.question}</div>
+                ${optionsHtml}
+                ${inputHtml}
+                <div class="qa-answer" id="qaAnswer_${qa.id}" style="display: none;"><strong>Answer:</strong> ${qa.answer}</div>
+                <div class="answer-feedback" id="practiceFeedback_${globalIdx}" style="display: none;"></div>
+                <div style="display: flex; gap: 10px; margin-top: 14px;">
+                    <button class="btn btn-secondary btn-sm" onclick="revealAnswer('${qa.id}')"><i class="fas fa-eye"></i> Reveal</button>
+                    <button class="btn btn-primary btn-sm" onclick="checkPracticeAnswerAtIndex(${globalIdx})"><i class="fas fa-check-circle"></i> Check Answer</button>
+                    <button class="btn btn-success btn-sm" onclick="markAnswerAtIndex(${globalIdx}, true)"><i class="fas fa-check"></i> Got it</button>
+                    <button class="btn btn-danger btn-sm" onclick="markAnswerAtIndex(${globalIdx}, false)"><i class="fas fa-times"></i> Practice</button>
+                </div>
             </div>
-            <div class="qa-question">${qa.question}</div>
-            ${optionsHtml}
-            ${inputHtml}
-            <div class="qa-answer" id="qaAnswer_${qa.id}"><strong>Answer:</strong> ${qa.answer}</div>
-            <div class="answer-feedback" id="practiceFeedback"></div>
-            <div style="display: flex; gap: 10px; margin-top: 14px;">
-                <button class="btn btn-secondary" onclick="prevQuestion()"><i class="fas fa-arrow-left"></i> Back</button>
-                <button class="btn btn-secondary" onclick="revealAnswer('${qa.id}')"><i class="fas fa-eye"></i> Reveal</button>
-                <button class="btn btn-primary" onclick="checkPracticeAnswer()"><i class="fas fa-check-circle"></i> Check Answer</button>
-                <button class="btn btn-success" onclick="markAnswer(true)"><i class="fas fa-check"></i> Got it</button>
-                <button class="btn btn-danger" onclick="markAnswer(false)"><i class="fas fa-times"></i> Practice</button>
-                <button class="btn btn-secondary" onclick="nextQuestion()" style="margin-left: auto;"><i class="fas fa-arrow-right"></i> Next</button>
-            </div>
-        </div>
-        <div style="text-align: center; color: var(--text-muted); font-size: 12px; margin-top: 10px;">Question ${currentQAIndex + 1} of ${currentQA.length}</div>
-    `;
+        `;
+    });
+
+    container.innerHTML = questionsHtml;
+}
+
+function selectPracticeMCQ(questionIdx, key) {
+    const qa = currentQA[questionIdx];
+    document.querySelectorAll(`[id^="qa_mcq_${questionIdx}_"], [id^="qa_tf_${questionIdx}_"]`).forEach(el => el.classList.remove('selected'));
+    const el = document.getElementById(`qa_mcq_${questionIdx}_${key}`) || document.getElementById(`qa_tf_${questionIdx}_${key}`);
+    if (el) el.classList.add('selected');
+}
+
+function prevQAPage() {
+    if (currentQAPage > 0) {
+        currentQAPage--;
+        showCurrentQuestion();
+    }
+}
+
+function nextQAPage() {
+    if ((currentQAPage + 1) * QA_PER_PAGE < currentQA.length) {
+        currentQAPage++;
+        showCurrentQuestion();
+    }
+}
+
+function checkPracticeAnswerAtIndex(idx) {
+    const qa = currentQA[idx];
+    const feedbackEl = document.getElementById(`practiceFeedback_${idx}`);
+
+    if (qa.type === 'MCQ' || qa.type === 'TRUE_FALSE') {
+        const selectedEl = document.querySelector(`#qa_mcq_${idx}.selected, #qa_tf_${idx}.selected`);
+        const selectedOption = selectedEl ? selectedEl.id.split('_').pop() : null;
+
+        if (!selectedOption) {
+            showToast('Please select an answer first', 'error');
+            return;
+        }
+
+        const isCorrect = selectedOption === qa.correct_answer;
+        if (feedbackEl) {
+            feedbackEl.className = 'answer-feedback ' + (isCorrect ? 'correct' : 'incorrect');
+            feedbackEl.innerHTML = isCorrect 
+                ? '<strong>Correct!</strong> Well done.' 
+                : `<strong>Incorrect.</strong> The correct answer is: <strong>${qa.correct_answer}</strong>`;
+            feedbackEl.style.display = 'block';
+        }
+
+        document.querySelectorAll(`[id^="qa_mcq_${idx}_"], [id^="qa_tf_${idx}_"]`).forEach(el => {
+            el.style.pointerEvents = 'none';
+        });
+        const correctEl = document.getElementById(`qa_mcq_${idx}_${qa.correct_answer}`) || document.getElementById(`qa_tf_${idx}_${qa.correct_answer}`);
+        if (correctEl) correctEl.classList.add('correct');
+        if (!isCorrect) {
+            const userEl = document.getElementById(`qa_mcq_${idx}_${selectedOption}`) || document.getElementById(`qa_tf_${idx}_${selectedOption}`);
+            if (userEl) userEl.classList.add('wrong');
+        }
+    } else {
+        const input = document.getElementById(`practiceAnswerInput_${idx}`);
+        if (!input || !input.value.trim()) {
+            showToast('Please type your answer first', 'error');
+            return;
+        }
+
+        const userAnswer = input.value.trim().toLowerCase();
+        const correctAnswer = (qa.correct_answer || qa.answer || '').toLowerCase();
+        const keywords = qa.keywords || [];
+
+        let isCorrect = false;
+        let score = 0;
+
+        if (qa.type === 'FILL_BLANK') {
+            isCorrect = userAnswer === correctAnswer;
+            score = isCorrect ? 100 : 0;
+        } else {
+            const keywordHits = keywords.filter(kw => userAnswer.includes(kw.toLowerCase())).length;
+            const keywordScore = keywords.length > 0 ? (keywordHits / keywords.length) * 100 : 0;
+            const containsAnswer = userAnswer.includes(correctAnswer.substring(0, 20)) || correctAnswer.includes(userAnswer.substring(0, 20));
+            score = Math.max(keywordScore, containsAnswer ? 70 : 0);
+            isCorrect = score >= 60;
+        }
+
+        if (feedbackEl) {
+            feedbackEl.className = 'answer-feedback ' + (isCorrect ? 'correct' : 'partial');
+            feedbackEl.innerHTML = isCorrect 
+                ? '<strong>Correct!</strong> Well done.' 
+                : `<strong>Partial/Incorrect.</strong> Your answer: "${input.value.trim()}"<br><strong>Correct answer:</strong> ${qa.correct_answer || qa.answer || correctAnswer}`;
+            feedbackEl.style.display = 'block';
+        }
+    }
+
+    revealAnswer(qa.id);
+}
+
+function markAnswerAtIndex(idx, correct) {
+    showToast(correct ? 'Great job!' : 'Keep practicing!', correct ? 'success' : 'info');
 }
 
 function selectMCQ(element, letter) {
@@ -778,96 +933,24 @@ function revealAnswer(qaId) {
 
 function markAnswer(correct) {
     showToast(correct ? 'Great job!' : 'Keep practicing!', correct ? 'success' : 'info');
-    nextQuestion();
+}
+
+function markAnswerAtIndex(idx, correct) {
+    showToast(correct ? 'Great job!' : 'Keep practicing!', correct ? 'success' : 'info');
 }
 
 function checkPracticeAnswer() {
-    const qa = currentQA[currentQAIndex];
-    const feedbackEl = document.getElementById('practiceFeedback');
-
-    if (qa.type === 'MCQ' || qa.type === 'TRUE_FALSE') {
-        if (!selectedMCQOption) {
-            showToast('Please select an answer first', 'error');
-            return;
-        }
-        // Normalize both to uppercase string for comparison
-        const userAnswer = String(selectedMCQOption).toUpperCase().trim();
-        const correctAnswer = String(qa.correct_answer || qa.answer).toUpperCase().trim();
-        const isCorrect = userAnswer === correctAnswer;
-
-        console.log('DEBUG:', {userAnswer, correctAnswer, isCorrect, qaType: qa.type, qaCorrect: qa.correct_answer, qaAnswer: qa.answer});
-
-        if (feedbackEl) {
-            feedbackEl.className = 'answer-feedback ' + (isCorrect ? 'correct' : 'incorrect');
-            feedbackEl.innerHTML = isCorrect 
-                ? '<strong>Correct!</strong> Well done.' 
-                : `<strong>Incorrect.</strong> The correct answer is: <strong>${correctAnswer}</strong>`;
-            feedbackEl.style.display = 'block';
-        }
-        // Highlight options
-        document.querySelectorAll('.mcq-option').forEach(el => {
-            el.style.pointerEvents = 'none';
-        });
-        // Find correct option by checking onclick attribute
-        const allOptions = document.querySelectorAll('.mcq-option');
-        allOptions.forEach(el => {
-            const onclick = el.getAttribute('onclick') || '';
-            if (onclick.includes(qa.correct_answer) || onclick.includes(qa.correct_answer.toUpperCase())) {
-                el.classList.add('correct');
-            }
-        });
-        if (!isCorrect) {
-            allOptions.forEach(el => {
-                const onclick = el.getAttribute('onclick') || '';
-                if (onclick.includes(selectedMCQOption) || onclick.includes(selectedMCQOption.toUpperCase())) {
-                    el.classList.add('wrong');
-                }
-            });
-        }
-        revealAnswer(qa.id);
-    } else {
-        // FILL_BLANK, SHORT_ANSWER, COMPARISON, LIST
-        const input = document.getElementById('practiceAnswerInput');
-        if (!input || !input.value.trim()) {
-            showToast('Please type your answer first', 'error');
-            return;
-        }
-        const userAnswer = input.value.trim().toLowerCase();
-        const correctAnswer = qa.correct_answer || qa.answer || '';
-        const correctLower = correctAnswer.toLowerCase();
-
-        // Simple keyword matching for text answers
-        let isCorrect = false;
-        let score = 0;
-
-        if (qa.type === 'FILL_BLANK') {
-            isCorrect = userAnswer === correctLower;
-            score = isCorrect ? 100 : 0;
-        } else {
-            // For short answer/comparison/list - check keyword coverage
-            const keywords = qa.keywords || [];
-            const keywordHits = keywords.filter(kw => userAnswer.includes(kw.toLowerCase())).length;
-            const keywordScore = keywords.length > 0 ? (keywordHits / keywords.length) * 100 : 0;
-            // Also check if user's answer contains the correct answer or vice versa
-            const containsAnswer = userAnswer.includes(correctLower.substring(0, 20)) || correctLower.includes(userAnswer.substring(0, 20));
-            score = Math.max(keywordScore, containsAnswer ? 70 : 0);
-            isCorrect = score >= 60;
-        }
-
-        if (feedbackEl) {
-            feedbackEl.className = 'answer-feedback ' + (isCorrect ? 'correct' : 'partial');
-            feedbackEl.innerHTML = isCorrect 
-                ? '<strong>Correct!</strong> Well done.' 
-                : `<strong>Partial/Incorrect.</strong> Your answer: "${input.value.trim()}"<br><strong>Correct answer:</strong> ${qa.correct_answer || qa.answer || correctAnswer}`;
-            feedbackEl.style.display = 'block';
-        }
-        revealAnswer(qa.id);
-    }
+    // Delegate to paginated version for current question index
+    checkPracticeAnswerAtIndex(currentQAIndex);
 }
 
 function nextQuestion() {
     if (currentQA.length > 0) {
         currentQAIndex = (currentQAIndex + 1) % currentQA.length;
+        const newPage = Math.floor(currentQAIndex / QA_PER_PAGE);
+        if (newPage !== currentQAPage) {
+            currentQAPage = newPage;
+        }
         showCurrentQuestion();
     }
 }
@@ -875,6 +958,10 @@ function nextQuestion() {
 function prevQuestion() {
     if (currentQA.length > 0) {
         currentQAIndex = (currentQAIndex - 1 + currentQA.length) % currentQA.length;
+        const newPage = Math.floor(currentQAIndex / QA_PER_PAGE);
+        if (newPage !== currentQAPage) {
+            currentQAPage = newPage;
+        }
         showCurrentQuestion();
     }
 }
@@ -886,6 +973,14 @@ async function loadTestMaterials() {
     try {
         const mats = await apiGet('/api/materials');
         mats.forEach(m => { const option = document.createElement('option'); option.value = m.id; option.textContent = m.filename; select.appendChild(option); });
+        select.onchange = (e) => {
+            if (e.target.value) {
+                currentTestMaterialId = e.target.value;
+                testQuestions = [];
+                currentTestPage = 0;
+                selectedTestOptions = {};
+            }
+        };
     } catch (error) { console.error('Test materials error:', error); }
 }
 
@@ -901,6 +996,7 @@ async function startTest() {
     if (!materialId) { showToast('Please select a material first', 'error'); return; }
 
     testTimeLimit = parseInt(timerVal) || 0;
+    currentTestMaterialId = materialId;
 
     try {
         showToast('Starting test...', 'info');
@@ -920,6 +1016,10 @@ async function startTest() {
             testStartTime = Date.now();
             showToast(`Test started! ${result.total_questions} questions. Good luck!`, 'success');
             showTestPage();
+
+            // Show End Test button in top bar
+            const endTestBtn = document.getElementById('endTestTopBtn');
+            if (endTestBtn) endTestBtn.style.display = 'inline-flex';
 
             if (testTimeLimit > 0) {
                 startCountdownTimer();
@@ -1031,7 +1131,6 @@ function showTestPage() {
             <button class="btn btn-primary" onclick="submitAllTestAnswers()"><i class="fas fa-paper-plane"></i> Submit All Answers</button>
             <button class="btn btn-success" onclick="submitAndNextPage()"><i class="fas fa-check-double"></i> Submit & Next 10</button>
             ${currentTestPage < totalPages - 1 ? `<button class="btn btn-secondary" onclick="nextTestPage()">Next 10 <i class="fas fa-arrow-right"></i></button>` : ''}
-            <button class="btn btn-warning" onclick="endTestEarly()" style="margin-left: auto;"><i class="fas fa-stop"></i> End Test</button>
         </div>
     `;
 
@@ -1121,6 +1220,10 @@ async function submitAllTestAnswers() {
 
     showToast(`Submitted ${submitted} answers. Getting results...`, 'success');
 
+    // Hide End Test button in top bar
+    const endTestBtn = document.getElementById('endTestTopBtn');
+    if (endTestBtn) endTestBtn.style.display = 'none';
+
     if (testTimerInterval) clearInterval(testTimerInterval);
 
     setTimeout(async () => {
@@ -1192,6 +1295,9 @@ async function submitAndNextPage() {
 
 function endTestEarly() {
     if (!confirm('Are you sure you want to end the test? All answered questions will be submitted.')) return;
+    // Hide End Test button in top bar
+    const endTestBtn = document.getElementById('endTestTopBtn');
+    if (endTestBtn) endTestBtn.style.display = 'none';
     submitAllTestAnswers();
 }
 
@@ -1245,7 +1351,12 @@ async function loadAOCMaterials() {
     try {
         const mats = await apiGet('/api/materials');
         mats.forEach(m => { const option = document.createElement('option'); option.value = m.id; option.textContent = m.filename; select.appendChild(option); });
-        select.onchange = (e) => { if (e.target.value) loadAOCForMaterial(e.target.value); };
+        select.onchange = (e) => { 
+            if (e.target.value) {
+                currentAOCMaterialId = e.target.value;
+                loadAOCForMaterial(e.target.value); 
+            }
+        };
     } catch (error) { console.error('AOC materials error:', error); }
 }
 
@@ -1283,7 +1394,12 @@ async function loadTheoryMaterials() {
     try {
         const mats = await apiGet('/api/materials');
         mats.forEach(m => { const option = document.createElement('option'); option.value = m.id; option.textContent = m.filename; select.appendChild(option); });
-        select.onchange = (e) => { if (e.target.value) loadTheoryForMaterial(e.target.value); };
+        select.onchange = (e) => { 
+            if (e.target.value) {
+                currentTheoryMaterialId = e.target.value;
+                loadTheoryForMaterial(e.target.value); 
+            }
+        };
     } catch (error) { console.error('Theory materials error:', error); }
 }
 
