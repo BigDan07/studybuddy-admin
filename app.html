@@ -355,6 +355,14 @@
                         <h3><i class="fas fa-vial"></i> Test Mode</h3>
                         <div style="display: flex; gap: 10px; align-items: center;">
                             <select id="testMaterialSelect" style="padding: 8px 14px; background: var(--bg-input); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text-primary); font-size: 14px;"><option value="">Select a material...</option></select>
+                            <select id="testTimerSelect" style="padding: 8px 14px; background: var(--bg-input); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text-primary); font-size: 14px; width: 140px;">
+                                <option value="0">No Timer</option>
+                                <option value="300">5 Minutes</option>
+                                <option value="600">10 Minutes</option>
+                                <option value="900">15 Minutes</option>
+                                <option value="1800">30 Minutes</option>
+                                <option value="3600">1 Hour</option>
+                            </select>
                             <button class="btn btn-primary btn-sm" onclick="startTest()"><i class="fas fa-play"></i> Start Test</button>
                         </div>
                     </div>
@@ -489,6 +497,10 @@ let currentTestIndex = 0;
 let testAnswers = [];
 let testStartTime = null;
 let selectedMCQOption = null;
+let currentTestPage = 0;
+let testTimerInterval = null;
+let testTimeLimit = 0;
+let selectedTestOptions = {};
 
 document.addEventListener('DOMContentLoaded', () => {
     checkServerConnection();
@@ -885,192 +897,302 @@ async function startTestForMaterial(materialId) {
 
 async function startTest() {
     const materialId = document.getElementById('testMaterialSelect').value;
+    const timerVal = document.getElementById('testTimerSelect').value;
     if (!materialId) { showToast('Please select a material first', 'error'); return; }
+
+    testTimeLimit = parseInt(timerVal) || 0;
 
     try {
         showToast('Starting test...', 'info');
-        // First ensure Q&A exists
         const qaList = await apiGet(`/api/materials/${materialId}/qa`);
         if (qaList.length === 0) {
             showToast('No Q&A found. Generating questions first...', 'info');
             await generateQA(materialId);
         }
 
-        // Start test session
         const result = await apiPost('/api/test/start', { material_id: parseInt(materialId) });
         if (result.success) {
             testSessionId = result.test_session_id;
             testQuestions = await apiGet(`/api/materials/${materialId}/qa`);
-            currentTestIndex = 0;
+            currentTestPage = 0;
             testAnswers = [];
+            selectedTestOptions = {};
             testStartTime = Date.now();
             showToast(`Test started! ${result.total_questions} questions. Good luck!`, 'success');
-            showCurrentTestQuestion();
+            showTestPage();
+
+            if (testTimeLimit > 0) {
+                startCountdownTimer();
+            } else {
+                startElapsedTimer();
+            }
         }
     } catch (error) {
         showToast('Failed to start test: ' + error.message, 'error');
     }
 }
 
-function showCurrentTestQuestion() {
+function startCountdownTimer() {
+    let remaining = testTimeLimit;
+    const timerEl = document.getElementById('testTimer');
+    testTimerInterval = setInterval(() => {
+        remaining--;
+        const mins = Math.floor(remaining / 60).toString().padStart(2, '0');
+        const secs = (remaining % 60).toString().padStart(2, '0');
+        if (timerEl) timerEl.textContent = `${mins}:${secs}`;
+        if (timerEl) timerEl.style.color = remaining < 60 ? 'var(--danger)' : 'var(--warning)';
+        if (remaining <= 0) {
+            clearInterval(testTimerInterval);
+            showToast('Time is up! Submitting test...', 'warning');
+            submitAllTestAnswers();
+        }
+    }, 1000);
+}
+
+function startElapsedTimer() {
+    const timerEl = document.getElementById('testTimer');
+    testTimerInterval = setInterval(() => {
+        const elapsed = Math.floor((Date.now() - testStartTime) / 1000);
+        const mins = Math.floor(elapsed / 60).toString().padStart(2, '0');
+        const secs = (elapsed % 60).toString().padStart(2, '0');
+        if (timerEl) timerEl.textContent = `${mins}:${secs}`;
+    }, 1000);
+}
+
+const QUESTIONS_PER_PAGE = 10;
+
+function showTestPage() {
     const container = document.getElementById('testContainer');
     if (testQuestions.length === 0) {
         container.innerHTML = `<div class="empty-state"><i class="fas fa-vial"></i><h4>No questions available</h4><p>Generate Q&A for this material first</p></div>`;
         return;
     }
 
-    const progress = ((currentTestIndex / testQuestions.length) * 100).toFixed(1);
-    const qa = testQuestions[currentTestIndex];
+    const startIdx = currentTestPage * QUESTIONS_PER_PAGE;
+    const endIdx = Math.min(startIdx + QUESTIONS_PER_PAGE, testQuestions.length);
+    const pageQuestions = testQuestions.slice(startIdx, endIdx);
+    const totalPages = Math.ceil(testQuestions.length / QUESTIONS_PER_PAGE);
+    const progress = ((endIdx / testQuestions.length) * 100).toFixed(1);
 
-    let inputHtml = '';
-    if (qa.type === 'MCQ' && qa.options) {
-        inputHtml = '<div class="mcq-options">' + Object.entries(qa.options).map(([key, val]) => 
-            `<div class="mcq-option" id="mcq_${key}" onclick="selectTestMCQ('${key}')"><span class="option-letter">${key}</span><span>${val}</span></div>`
-        ).join('') + '</div>';
-    } else if (qa.type === 'TRUE_FALSE') {
-        inputHtml = `
-            <div class="mcq-options">
-                <div class="mcq-option" id="tf_TRUE" onclick="selectTestMCQ('TRUE')"><span class="option-letter">T</span><span>TRUE</span></div>
-                <div class="mcq-option" id="tf_FALSE" onclick="selectTestMCQ('FALSE')"><span class="option-letter">F</span><span>FALSE</span></div>
+    let questionsHtml = '';
+    pageQuestions.forEach((qa, idx) => {
+        const globalIdx = startIdx + idx;
+        let inputHtml = '';
+
+        if (qa.type === 'MCQ' && qa.options) {
+            inputHtml = '<div class="mcq-options" style="margin-top: 10px;">' + Object.entries(qa.options).map(([key, val]) => 
+                `<div class="mcq-option" id="mcq_${globalIdx}_${key}" onclick="selectTestMCQ(${globalIdx}, '${key}')"><span class="option-letter">${key}</span><span>${val}</span></div>`
+            ).join('') + '</div>';
+        } else if (qa.type === 'TRUE_FALSE') {
+            inputHtml = `
+                <div class="mcq-options" style="margin-top: 10px;">
+                    <div class="mcq-option" id="tf_${globalIdx}_TRUE" onclick="selectTestMCQ(${globalIdx}, 'TRUE')"><span class="option-letter">T</span><span>TRUE</span></div>
+                    <div class="mcq-option" id="tf_${globalIdx}_FALSE" onclick="selectTestMCQ(${globalIdx}, 'FALSE')"><span class="option-letter">F</span><span>FALSE</span></div>
+                </div>
+            `;
+        } else {
+            inputHtml = `
+                <div class="answer-input-area" style="margin-top: 10px;">
+                    <div class="input-label"><i class="fas fa-pen"></i> Type your answer:</div>
+                    <textarea id="testAnswerInput_${globalIdx}" placeholder="Enter your answer here..." style="min-height: 60px;"></textarea>
+                </div>
+            `;
+        }
+
+        questionsHtml += `
+            <div class="qa-card" style="margin-bottom: 16px;" data-idx="${globalIdx}" data-qid="${qa.id}">
+                <div class="qa-header">
+                    <span class="qa-type">${qa.type}</span>
+                    <span class="badge badge-${qa.difficulty === 'easy' ? 'success' : qa.difficulty === 'hard' ? 'danger' : 'warning'}">${qa.difficulty}</span>
+                    <span style="margin-left: auto; color: var(--text-muted); font-size: 12px;">Q${globalIdx + 1}</span>
+                </div>
+                <div class="qa-question" style="font-size: 15px;">${qa.question}</div>
+                ${inputHtml}
+                <div class="answer-feedback" id="testFeedback_${globalIdx}" style="display: none;"></div>
             </div>
         `;
-    } else {
-        inputHtml = `
-            <div class="answer-input-area">
-                <div class="input-label"><i class="fas fa-pen"></i> Type your answer:</div>
-                <textarea id="testAnswerInput" placeholder="Enter your answer here..."></textarea>
-            </div>
-        `;
-    }
+    });
+
+    const timerColor = testTimeLimit > 0 ? 'var(--warning)' : 'var(--accent)';
+    const timerLabel = testTimeLimit > 0 ? 'Time Remaining' : 'Elapsed Time';
 
     container.innerHTML = `
         <div class="test-mode-bar">
             <div class="test-info">
-                <div class="info-item"><i class="fas fa-question-circle"></i> Question ${currentTestIndex + 1} of ${testQuestions.length}</div>
-                <div class="info-item"><i class="fas fa-clock"></i> <span id="testTimer">00:00</span></div>
-                <div class="info-item"><i class="fas fa-tag"></i> ${qa.type}</div>
+                <div class="info-item"><i class="fas fa-question-circle"></i> Questions ${startIdx + 1}-${endIdx} of ${testQuestions.length}</div>
+                <div class="info-item"><i class="fas fa-clock"></i> <span id="testTimer" style="color: ${timerColor}; font-weight: 700;">00:00</span> <span style="font-size: 11px; color: var(--text-muted);">(${timerLabel})</span></div>
+                <div class="info-item"><i class="fas fa-file-alt"></i> Page ${currentTestPage + 1} of ${totalPages}</div>
             </div>
             <div class="test-progress-bar"><div class="progress-fill" style="width: ${progress}%"></div></div>
         </div>
-        <div class="qa-card">
-            <div class="qa-header">
-                <span class="qa-type">${qa.type}</span>
-                <span class="badge badge-${qa.difficulty === 'easy' ? 'success' : qa.difficulty === 'hard' ? 'danger' : 'warning'}">${qa.difficulty}</span>
-            </div>
-            <div class="qa-question">${qa.question}</div>
-            ${inputHtml}
-            <div class="answer-feedback" id="testFeedback"></div>
-            <div style="display: flex; gap: 10px; margin-top: 14px;">
-                <button class="btn btn-primary" onclick="submitTestAnswer()"><i class="fas fa-paper-plane"></i> Submit Answer</button>
-                <button class="btn btn-secondary" onclick="skipTestQuestion()"><i class="fas fa-forward"></i> Skip</button>
-                <button class="btn btn-warning" onclick="endTestEarly()" style="margin-left: auto;"><i class="fas fa-stop"></i> End Test</button>
-            </div>
+        ${questionsHtml}
+        <div style="display: flex; gap: 10px; margin-top: 20px; align-items: center;">
+            <button class="btn btn-secondary" onclick="prevTestPage()" ${currentTestPage === 0 ? 'disabled style="opacity: 0.5;"' : ''}><i class="fas fa-arrow-left"></i> Previous 10</button>
+            <button class="btn btn-primary" onclick="submitAllTestAnswers()"><i class="fas fa-paper-plane"></i> Submit All Answers</button>
+            <button class="btn btn-success" onclick="submitAndNextPage()"><i class="fas fa-check-double"></i> Submit & Next 10</button>
+            ${currentTestPage < totalPages - 1 ? `<button class="btn btn-secondary" onclick="nextTestPage()">Next 10 <i class="fas fa-arrow-right"></i></button>` : ''}
+            <button class="btn btn-warning" onclick="endTestEarly()" style="margin-left: auto;"><i class="fas fa-stop"></i> End Test</button>
         </div>
     `;
 
-    // Start timer
-    updateTestTimer();
+    // Restore any previously selected answers
+    Object.entries(selectedTestOptions).forEach(([idx, answer]) => {
+        const i = parseInt(idx);
+        if (i >= startIdx && i < endIdx) {
+            const qa = testQuestions[i];
+            if (qa.type === 'MCQ' || qa.type === 'TRUE_FALSE') {
+                const el = document.getElementById(`mcq_${i}_${answer}`) || document.getElementById(`tf_${i}_${answer}`);
+                if (el) el.classList.add('selected');
+            } else {
+                const input = document.getElementById(`testAnswerInput_${i}`);
+                if (input) input.value = answer;
+            }
+        }
+    });
 }
 
-let selectedTestOption = null;
-
-function selectTestMCQ(key) {
-    document.querySelectorAll('.mcq-option').forEach(el => el.classList.remove('selected'));
-    const el = document.getElementById(`mcq_${key}`) || document.getElementById(`tf_${key}`);
+function selectTestMCQ(questionIdx, key) {
+    const qa = testQuestions[questionIdx];
+    document.querySelectorAll(`[id^="mcq_${questionIdx}_"], [id^="tf_${questionIdx}_"]`).forEach(el => el.classList.remove('selected'));
+    const el = document.getElementById(`mcq_${questionIdx}_${key}`) || document.getElementById(`tf_${questionIdx}_${key}`);
     if (el) el.classList.add('selected');
-    selectedTestOption = key;
+    selectedTestOptions[questionIdx] = key;
 }
 
-function updateTestTimer() {
-    if (!testStartTime) return;
-    const elapsed = Math.floor((Date.now() - testStartTime) / 1000);
-    const mins = Math.floor(elapsed / 60).toString().padStart(2, '0');
-    const secs = (elapsed % 60).toString().padStart(2, '0');
-    const timerEl = document.getElementById('testTimer');
-    if (timerEl) timerEl.textContent = `${mins}:${secs}`;
-    if (testSessionId) setTimeout(updateTestTimer, 1000);
+function nextTestPage() {
+    saveCurrentPageAnswers();
+    currentTestPage++;
+    showTestPage();
 }
 
-async function submitTestAnswer() {
-    const qa = testQuestions[currentTestIndex];
-    let userAnswer = '';
+function prevTestPage() {
+    saveCurrentPageAnswers();
+    if (currentTestPage > 0) {
+        currentTestPage--;
+        showTestPage();
+    }
+}
 
-    if (qa.type === 'MCQ' || qa.type === 'TRUE_FALSE') {
-        if (!selectedTestOption) { showToast('Please select an answer', 'error'); return; }
-        userAnswer = selectedTestOption;
-    } else {
-        const input = document.getElementById('testAnswerInput');
-        if (!input || !input.value.trim()) { showToast('Please type your answer', 'error'); return; }
-        userAnswer = input.value.trim();
+function saveCurrentPageAnswers() {
+    const startIdx = currentTestPage * QUESTIONS_PER_PAGE;
+    const endIdx = Math.min(startIdx + QUESTIONS_PER_PAGE, testQuestions.length);
+
+    for (let i = startIdx; i < endIdx; i++) {
+        const qa = testQuestions[i];
+        if (qa.type === 'MCQ' || qa.type === 'TRUE_FALSE') {
+            // Already saved in selectTestMCQ
+        } else {
+            const input = document.getElementById(`testAnswerInput_${i}`);
+            if (input && input.value.trim()) {
+                selectedTestOptions[i] = input.value.trim();
+            }
+        }
+    }
+}
+
+async function submitAllTestAnswers() {
+    saveCurrentPageAnswers();
+
+    if (Object.keys(selectedTestOptions).length === 0) {
+        if (!confirm('You have not answered any questions. Are you sure you want to submit?')) return;
+    } else if (Object.keys(selectedTestOptions).length < testQuestions.length) {
+        const unanswered = testQuestions.length - Object.keys(selectedTestOptions).length;
+        if (!confirm(`You have ${unanswered} unanswered questions. Submit anyway?`)) return;
     }
 
-    try {
-        const timeSpent = Math.floor((Date.now() - testStartTime) / 1000);
-        const result = await apiPost(`/api/test/${testSessionId}/answer`, {
-            qa_id: qa.id,
-            user_answer: userAnswer,
-            time_spent_seconds: timeSpent
-        });
+    const timeSpent = Math.floor((Date.now() - testStartTime) / 1000);
+    let submitted = 0;
 
-        // Show feedback
-        const feedbackEl = document.getElementById('testFeedback');
-        if (feedbackEl) {
-            feedbackEl.className = 'answer-feedback ' + (result.is_correct ? 'correct' : result.score >= 60 ? 'partial' : 'incorrect');
-            feedbackEl.innerHTML = `<strong>${result.is_correct ? 'Correct!' : 'Incorrect'}</strong> ${result.feedback}<br><small>Score: ${result.score.toFixed(0)}% | Overall: ${result.current_overall_score.toFixed(1)}%</small>`;
-        }
+    for (let i = 0; i < testQuestions.length; i++) {
+        const qa = testQuestions[i];
+        const userAnswer = selectedTestOptions[i] || '';
 
-        // Highlight options for MCQ
-        if (qa.type === 'MCQ' || qa.type === 'TRUE_FALSE') {
-            document.querySelectorAll('.mcq-option').forEach(el => {
-                el.classList.remove('selected');
-                el.style.pointerEvents = 'none';
+        try {
+            await apiPost(`/api/test/${testSessionId}/answer`, {
+                qa_id: qa.id,
+                user_answer: userAnswer,
+                time_spent_seconds: timeSpent
             });
-            const correctEl = document.getElementById(`mcq_${qa.correct_answer}`) || document.getElementById(`tf_${qa.correct_answer}`);
-            const userEl = document.getElementById(`mcq_${userAnswer}`) || document.getElementById(`tf_${userAnswer}`);
-            if (correctEl) correctEl.classList.add('correct');
-            if (userEl && !result.is_correct) userEl.classList.add('wrong');
+            submitted++;
+        } catch (e) {
+            console.error(`Failed to submit Q${i}:`, e);
         }
+    }
 
-        testAnswers.push({ question: qa.question, userAnswer, correctAnswer: qa.answer, isCorrect: result.is_correct, score: result.score });
+    showToast(`Submitted ${submitted} answers. Getting results...`, 'success');
 
-        // Auto advance after 2 seconds
-        setTimeout(() => {
-            currentTestIndex++;
-            selectedTestOption = null;
-            if (currentTestIndex >= testQuestions.length) {
-                finishTest();
-            } else {
-                showCurrentTestQuestion();
+    if (testTimerInterval) clearInterval(testTimerInterval);
+
+    setTimeout(async () => {
+        try {
+            const result = await apiGet(`/api/test/${testSessionId}/result`);
+            if (result.success) {
+                showTestResults(result);
+                testSessionId = null;
+                testStartTime = null;
+                testTimerInterval = null;
             }
-        }, 2500);
-
-    } catch (error) { showToast('Failed to submit: ' + error.message, 'error'); }
+        } catch (error) { 
+            showToast('Failed to get results: ' + error.message, 'error'); 
+        }
+    }, 1000);
 }
 
-function skipTestQuestion() {
-    currentTestIndex++;
-    selectedTestOption = null;
-    if (currentTestIndex >= testQuestions.length) {
-        finishTest();
+async function submitAndNextPage() {
+    saveCurrentPageAnswers();
+
+    const startIdx = currentTestPage * QUESTIONS_PER_PAGE;
+    const endIdx = Math.min(startIdx + QUESTIONS_PER_PAGE, testQuestions.length);
+    const timeSpent = Math.floor((Date.now() - testStartTime) / 1000);
+
+    for (let i = startIdx; i < endIdx; i++) {
+        const qa = testQuestions[i];
+        const userAnswer = selectedTestOptions[i] || '';
+
+        if (!userAnswer) continue;
+
+        try {
+            const result = await apiPost(`/api/test/${testSessionId}/answer`, {
+                qa_id: qa.id,
+                user_answer: userAnswer,
+                time_spent_seconds: timeSpent
+            });
+
+            const feedbackEl = document.getElementById(`testFeedback_${i}`);
+            if (feedbackEl) {
+                feedbackEl.className = 'answer-feedback ' + (result.is_correct ? 'correct' : result.score >= 60 ? 'partial' : 'incorrect');
+                feedbackEl.innerHTML = `<strong>${result.is_correct ? 'Correct!' : 'Incorrect'}</strong> ${result.feedback}<br><small>Score: ${result.score.toFixed(0)}%</small>`;
+                feedbackEl.style.display = 'block';
+            }
+
+            if (qa.type === 'MCQ' || qa.type === 'TRUE_FALSE') {
+                document.querySelectorAll(`[id^="mcq_${i}_"], [id^="tf_${i}_"]`).forEach(el => {
+                    el.style.pointerEvents = 'none';
+                });
+                const correctEl = document.getElementById(`mcq_${i}_${qa.correct_answer}`) || document.getElementById(`tf_${i}_${qa.correct_answer}`);
+                const userEl = document.getElementById(`mcq_${i}_${userAnswer}`) || document.getElementById(`tf_${i}_${userAnswer}`);
+                if (correctEl) correctEl.classList.add('correct');
+                if (userEl && !result.is_correct) userEl.classList.add('wrong');
+            }
+        } catch (e) {
+            console.error(`Failed to submit Q${i}:`, e);
+        }
+    }
+
+    const totalPages = Math.ceil(testQuestions.length / QUESTIONS_PER_PAGE);
+    if (currentTestPage < totalPages - 1) {
+        setTimeout(() => {
+            currentTestPage++;
+            showTestPage();
+        }, 2000);
     } else {
-        showCurrentTestQuestion();
+        showToast('Last page submitted! You can now End Test to see results.', 'info');
     }
 }
 
 function endTestEarly() {
-    if (!confirm('Are you sure you want to end the test early?')) return;
-    finishTest();
-}
-
-async function finishTest() {
-    try {
-        const result = await apiGet(`/api/test/${testSessionId}/result`);
-        if (result.success) {
-            showTestResults(result);
-            testSessionId = null;
-            testStartTime = null;
-        }
-    } catch (error) { showToast('Failed to get results: ' + error.message, 'error'); }
+    if (!confirm('Are you sure you want to end the test? All answered questions will be submitted.')) return;
+    submitAllTestAnswers();
 }
 
 function showTestResults(result) {
