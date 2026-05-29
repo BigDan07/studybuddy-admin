@@ -719,9 +719,53 @@ async function loadQAMaterials() {
 }
 
 async function generateQA(materialId, numQuestions = 100) {
+    const container = document.getElementById('qaContainer');
+    const paginationDiv = document.getElementById('qaPagination');
+
+    // Show progress bar
+    container.innerHTML = `
+        <div style="text-align:center;padding:50px 20px;">
+            <div style="font-size:18px;font-weight:700;color:var(--text-primary);margin-bottom:20px;">
+                <i class="fas fa-brain" style="color:var(--accent);margin-right:10px;"></i>
+                Generating ${numQuestions} Exam Questions
+            </div>
+            <div style="max-width:400px;margin:0 auto 20px;">
+                <div style="height:8px;background:var(--bg-tertiary);border-radius:4px;overflow:hidden;">
+                    <div id="genProgressBar" style="height:100%;width:0%;background:linear-gradient(90deg,var(--gradient-start),var(--gradient-end));border-radius:4px;transition:width 0.3s ease;"></div>
+                </div>
+                <div id="genProgressText" style="font-size:13px;color:var(--text-muted);margin-top:10px;font-weight:600;">Initializing...</div>
+            </div>
+            <div style="font-size:13px;color:var(--text-muted);max-width:350px;margin:0 auto;line-height:1.6;">
+                <i class="fas fa-info-circle" style="margin-right:6px;"></i>
+                Analyzing material content, extracting key concepts, and creating targeted exam questions. This may take 30-60 seconds.
+            </div>
+        </div>
+    `;
+    if (paginationDiv) paginationDiv.style.display = 'none';
+
+    // Animate progress bar
+    let progress = 0;
+    const progressBar = document.getElementById('genProgressBar');
+    const progressText = document.getElementById('genProgressText');
+    const progressInterval = setInterval(() => {
+        progress += Math.random() * 15;
+        if (progress > 90) progress = 90;
+        if (progressBar) progressBar.style.width = progress + '%';
+        if (progressText) {
+            if (progress < 20) progressText.textContent = 'Reading material content...';
+            else if (progress < 40) progressText.textContent = 'Extracting key concepts...';
+            else if (progress < 60) progressText.textContent = 'Generating questions...';
+            else if (progress < 80) progressText.textContent = 'Validating question quality...';
+            else progressText.textContent = 'Finalizing...';
+        }
+    }, 800);
+
     try {
-        showToast(`Generating ${numQuestions} exam questions...`, 'info');
         const result = await apiPost(`/api/materials/${materialId}/qa`, { num_questions: numQuestions });
+        clearInterval(progressInterval);
+        if (progressBar) progressBar.style.width = '100%';
+        if (progressText) progressText.textContent = 'Complete!';
+
         if (result.success) {
             showToast(`Generated ${result.qa_count} questions!`, 'success');
             currentQAMaterialId = materialId;
@@ -731,7 +775,20 @@ async function generateQA(materialId, numQuestions = 100) {
             document.getElementById('qaMaterialSelect').value = materialId;
             loadQAForMaterial(materialId);
         }
-    } catch (error) { showToast('Q&A generation failed: ' + error.message, 'error'); }
+    } catch (error) { 
+        clearInterval(progressInterval);
+        showToast('Q&A generation failed: ' + error.message, 'error'); 
+        container.innerHTML = `
+            <div style="text-align:center;padding:40px;color:var(--danger);">
+                <i class="fas fa-exclamation-triangle" style="font-size:40px;margin-bottom:15px;"></i>
+                <div style="font-size:16px;font-weight:600;">Generation Failed</div>
+                <div style="font-size:13px;color:var(--text-muted);margin-top:8px;">${error.message}</div>
+                <button class="btn btn-primary" onclick="generateQA(${materialId}, ${numQuestions})" style="margin-top:20px;">
+                    <i class="fas fa-redo"></i> Try Again
+                </button>
+            </div>
+        `;
+    }
 }
 
 async function generateQAFromSelect() {
